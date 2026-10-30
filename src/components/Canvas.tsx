@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef } from 'react'
 import {
-  addItems, adoptInto, frameAt, getItems, maxZ, moveBy, newId, reparent, sendCursor,
+  addItems, adoptInto, descendantsOf, frameAt, getItems, hasAncestorIn, maxZ, moveBy, newId, reparent, sendCursor,
   undoManager, updateItem, useItems
 } from '../board'
 import { center, containsRect, intersects, itemRect, nearestSide, normRect, sidePoint, unionRects } from '../geometry'
 import { snapRect } from '../snapping'
 import { camera, screenToWorld, select, ui, useStore, viewportSize, zoomAt, zoomToRect, type Guide } from '../store'
-import { newFrame } from '../actions'
+import { enterFocus, exitFocus, newFrame } from '../actions'
+import { createSubBoard, enterBoard } from '../subboards'
 import { ItemView, playing } from './ItemView'
 import { Connectors } from './Connectors'
 import { Overlay } from './Overlay'
@@ -44,7 +45,7 @@ function snapTargets (exclude: Set<string>): Rect[] {
   const view = normRect(a, b)
   const out: Rect[] = []
   for (const it of Object.values(all)) {
-    if (exclude.has(it.id) || it.type === 'connector' || (it.parentId && exclude.has(it.parentId))) continue
+    if (exclude.has(it.id) || it.type === 'connector' || hasAncestorIn(it.id, exclude)) continue
     if (intersects(it, view)) out.push(it)
   }
   return out
@@ -101,6 +102,13 @@ export function Canvas () {
 
   // Stop inline videos when zoomed far out (keeps big boards smooth).
   useEffect(() => camera.subscribe(() => { if (camera.get().zoom < 0.25 && playing.get().id) playing.set({ id: null }) }), [])
+
+  const focus = useStore(ui, (s) => s.focus)
+  // Entered frame and everything inside it stay interactive; the rest is dimmed.
+  const focusSet = useMemo(() => {
+    if (!focus || !items[focus]) return null
+    return new Set([focus, ...descendantsOf(focus).map((d) => d.id)])
+  }, [focus, items])
 
   const { frameList, connList, otherList } = useMemo(() => {
     const frameList: Item[] = []; const connList: Item[] = []; const otherList: Item[] = []
@@ -165,7 +173,7 @@ export function Canvas () {
   function startMove (p: Point, s: Point, clickId: string | null, wasSelected: boolean, shift: boolean) {
     const all = getItems()
     const sel = new Set(ui.get().selected)
-    const ids = [...sel].filter((id) => all[id] && !all[id].locked && !(all[id].parentId && sel.has(all[id].parentId!)))
+    const ids = [...sel].filter((id) => all[id] && !all[id].locked && !hasAncestorIn(id, sel))
     if (!ids.length) return
     const base = unionRects(ids.map((id) => itemRect(all[id], all)))!
     undoManager.stopCapturing()
@@ -218,6 +226,7 @@ export function Canvas () {
     const anchorEl = t.closest('[data-anchor]') as HTMLElement | null
     const endpointEl = t.closest('[data-endpoint]') as HTMLElement | null
 
+    if (tool === 'board') { createSubBoard(p); return }
     if (tool === 'frame' || tool === 'shape' || tool === 'sticky' || tool === 'text') {
       drag.current = { kind: 'create', tool, start: p }
       return
@@ -344,7 +353,7 @@ export function Canvas () {
         const all = getItems()
         const hit: string[] = []
         for (const it of Object.values(all)) {
-          if (it.locked) continue
+          if (it.locked || (focusSet && !focusSet.has(it.id))) continue
           const ir = itemRect(it, all)
           // Frames need to be fully enclosed so marquee inside a frame picks its content.
           if (it.type === 'frame' ? containsRect(r, ir) : intersects(r, ir)) hit.push(it.id)
@@ -425,7 +434,8 @@ export function Canvas () {
       case 'move': {
         if (d.moved) {
           const all = getItems()
-          reparent(d.ids.filter((id) => all[id]?.type !== 'frame'))
+          // Frames dropped inside other frames become nested (and leave when dragged out).
+          reparent(d.ids.filter((id) => all[id]))
           undoManager.stopCapturing()
         } else if (d.clickId && d.wasSelected && !d.shift) {
           select([d.clickId])
@@ -504,15 +514,18 @@ export function Canvas () {
     if (titleEl) { ui.set({ editing: titleEl.dataset.frameTitle!, selected: [titleEl.dataset.frameTitle!] }); return }
     const id = (t.closest('[data-id]') as HTMLElement | null)?.dataset.id
     const it = id ? getItems()[id] : null
+    // Double click on empty canvas leaves the entered frame, one level up.
+    if (!it && ui.get().focus) { exitFocus(); return }
     if (!it || it.locked) return
     switch (it.type) {
       // Shapes and stickies are edited with a triple click (see onClick).
       case 'text': case 'connector':
         ui.set({ editing: it.id, selected: [it.id] }); break
-      case 'frame': zoomToRect(it, 40, true, 4); break
+      case 'frame': enterFocus(it.id); break
       case 'link': ui.set({ preview: { url: it.url!, kind: 'link' } }); break
       case 'video': playing.set({ id: it.id }); break
       case 'image': zoomToRect(it, 60, true, 4); break
+      case 'board': enterBoard(it); break
     }
   }
 
@@ -532,9 +545,9 @@ export function Canvas () {
       onContextMenu={(e) => { if (!(e.target as HTMLElement).closest('[data-nodrag]')) e.preventDefault() }}
     >
       <div className='world' ref={worldRef}>
-        {frameList.map((it) => <ItemView key={it.id} it={it} />)}
-        <Connectors items={items} list={connList} />
-        {otherList.map((it) => <ItemView key={it.id} it={it} />)}
+        {frameList.map((it) => <ItemView key={it.id} it={it} dim={!!focusSet && !focusSet.has(it.id)} />)}
+        <Connectors items={items} list={connList} focusSet={focusSet} />
+        {otherList.map((it) => <ItemView key={it.id} it={it} dim={!!focusSet && !focusSet.has(it.id)} />)}
       </div>
       <Overlay />
     </div>

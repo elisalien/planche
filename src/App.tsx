@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { awareness, canvasIsDark, getItems, net, subscribeItems, useMeta } from './board'
 import { ensureFont } from './fonts'
+import './subboards'
 import { getStyles, subscribeStyles } from './textStyles'
 import { camera, ui, useStore, viewportCenterWorld, viewportSize, zoomBy } from './store'
 import {
-  copySelection, deleteSelection, duplicateSelection, fitAll, frameSelection, nudge, pasteClip, redo, reorder, selectAll,
+  copySelection, deleteSelection, duplicateSelection, exitFocus, fitAll, frameSelection, nudge, pasteClip, redo, reorder, selectAll,
   undo, zoomToSelection
 } from './actions'
 import { align } from './align'
@@ -13,10 +14,10 @@ import { Canvas, isTyping, pointer } from './components/Canvas'
 import { Toolbar } from './components/Toolbar'
 import { TopBar } from './components/TopBar'
 import { Inspector } from './components/Inspector'
-import { FramesPanel, PreviewModal, Presenter, Toast, ZoomBar } from './components/Panels'
+import { FocusBar, FramesPanel, PreviewModal, Presenter, Toast, ZoomBar } from './components/Panels'
 import type { Tool } from './store'
 
-const TOOL_KEYS: Record<string, Tool> = { v: 'select', h: 'hand', f: 'frame', n: 'sticky', t: 'text', r: 'shape', o: 'shape', l: 'connector', c: 'connector' }
+const TOOL_KEYS: Record<string, Tool> = { v: 'select', h: 'hand', f: 'frame', n: 'sticky', t: 'text', r: 'shape', o: 'shape', l: 'connector', c: 'connector', b: 'board' }
 
 function onKeyDown (e: KeyboardEvent) {
   if (isTyping(e.target)) return
@@ -50,7 +51,9 @@ function onKeyDown (e: KeyboardEvent) {
 
   switch (e.key) {
     case 'Delete': case 'Backspace': deleteSelection(); return
-    case 'Escape': ui.set({ selected: [], tool: 'select', connecting: null, editing: null }); return
+    case 'Escape':
+      if (!s.selected.length && s.focus) { exitFocus(); return }
+      ui.set({ selected: [], tool: 'select', connecting: null, editing: null }); return
     case 'Enter': {
       const id = s.selected[0]
       const it = id ? getItems()[id] : null
@@ -204,6 +207,7 @@ export function App () {
           <Toolbar />
           {framesPanel && <FramesPanel />}
           <Inspector />
+          <FocusBar />
           <ZoomBar />
           <Help />
         </>

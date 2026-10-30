@@ -1,5 +1,5 @@
 import { memo, useEffect, useLayoutEffect, useRef } from 'react'
-import { ExternalLink, Eye, Play, RefreshCw } from 'lucide-react'
+import { ExternalLink, Eye, LayoutGrid, Play, RefreshCw } from 'lucide-react'
 import { updateItem, transact } from '../board'
 import { createStore, ui, useStore } from '../store'
 import { hostOf, unfurlInto } from '../media'
@@ -201,7 +201,28 @@ function VideoCard ({ it }: { it: Item }) {
   )
 }
 
-export const ItemView = memo(function ItemView ({ it }: { it: Item }) {
+/** Card of a sub-board: title, mini map of its content, double click to enter. */
+function BoardCard ({ it }: { it: Item }) {
+  const s = it.summary
+  const accent = it.fill ?? '#6366f1'
+  return (
+    <div className='board-card' style={{ ['--card-accent' as string]: accent }}>
+      <div className='bc-map'>
+        {s?.boxes.map((b, i) => (
+          <span key={i} className={b.frame ? 'bc-frame' : 'bc-item'}
+            style={{ left: `${b.x * 100}%`, top: `${b.y * 100}%`, width: `${Math.max(b.w * 100, 2)}%`, height: `${Math.max(b.h * 100, 2)}%`, background: b.frame ? undefined : b.fill }} />
+        ))}
+        {!s?.count && <span className='bc-empty'>Board vide</span>}
+      </div>
+      <div className='bc-body'>
+        <div className='bc-title'><LayoutGrid size={15} /> <span>{it.title || 'Sans titre'}</span></div>
+        <div className='bc-meta'>{s ? `${s.count} élément${s.count > 1 ? 's' : ''} · ${s.frames} cadre${s.frames > 1 ? 's' : ''}` : ''}<span>Double-clic pour entrer</span></div>
+      </div>
+    </div>
+  )
+}
+
+export const ItemView = memo(function ItemView ({ it, dim }: { it: Item; dim?: boolean }) {
   let body: React.ReactNode = null
   switch (it.type) {
     case 'frame': body = <Frame it={it} />; break
@@ -211,9 +232,10 @@ export const ItemView = memo(function ItemView ({ it }: { it: Item }) {
     case 'link': body = <LinkCard it={it} />; break
     case 'video': body = <VideoCard it={it} />; break
     case 'image': body = <img className='image' src={it.src} alt='' draggable={false} />; break
+    case 'board': body = <BoardCard it={it} />; break
   }
   return (
-    <div className={`item item-${it.type}${it.locked ? ' locked' : ''}`} data-id={it.id} style={{ left: it.x, top: it.y, width: it.w, height: it.h }}>
+    <div className={`item item-${it.type}${it.locked ? ' locked' : ''}${dim ? ' dimmed' : ''}`} data-id={it.id} style={{ left: it.x, top: it.y, width: it.w, height: it.h }}>
       {body}
     </div>
   )

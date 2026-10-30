@@ -1,4 +1,4 @@
-export type ItemType = 'frame' | 'sticky' | 'text' | 'shape' | 'link' | 'video' | 'image' | 'connector'
+export type ItemType = 'frame' | 'sticky' | 'text' | 'shape' | 'link' | 'video' | 'image' | 'connector' | 'board'
 export type Side = 'top' | 'right' | 'bottom' | 'left'
 export type Anchor = Side | 'auto'
 export type FramePattern = 'none' | 'dots' | 'grid' | 'lines'
@@ -85,6 +85,10 @@ export interface Item extends Rect {
   video?: VideoInfo | null
   src?: string
 
+  // board (card linking to a sub-board)
+  boardRef?: string
+  summary?: BoardSummary | null
+
   // connector
   from?: ConnEnd
   to?: ConnEnd
@@ -97,6 +101,14 @@ export interface Item extends Rect {
 }
 
 export type Items = Record<string, Item>
+
+/** Snapshot of a sub-board shown on its card; boxes are normalised to 0..1. */
+export interface BoardSummary {
+  count: number
+  frames: number
+  boxes: { x: number; y: number; w: number; h: number; fill?: string; frame: boolean }[]
+  updated: number
+}
 
 /** Named, linked character + paragraph style (InDesign-like). */
 export interface TextStyle {

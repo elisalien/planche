@@ -5,7 +5,7 @@ import { Awareness } from 'y-protocols/awareness'
 import { useSyncExternalStore } from 'react'
 import { createStore, useStore } from './store'
 import type { Item, Items, TextStyle } from './types'
-import { contains, center, itemsBounds } from './geometry'
+import { contains, containsRect, center, itemsBounds } from './geometry'
 
 // ---------------------------------------------------------------- identity
 
@@ -98,6 +98,31 @@ export function setMe (patch: Partial<typeof me>) {
   awareness.setLocalStateField('user', me)
 }
 
+/**
+ * Open another board's document (local copy + server when available), run `fn`
+ * on it, give the changes time to reach the server, then close it.
+ */
+export async function withBoardDoc<T> (id: string, fn: (d: { doc: Y.Doc; items: Y.Map<Item>; meta: Y.Map<unknown>; styles: Y.Map<TextStyle> }) => T): Promise<T> {
+  const d = new Y.Doc()
+  const store = new IndexeddbPersistence(`planche-${id}`, d)
+  await store.whenSynced
+  let ws: WebsocketProvider | null = null
+  if (provider) {
+    const p = new WebsocketProvider(serverUrl()!, id, d, { awareness: new Awareness(d) })
+    ws = p
+    await new Promise<void>((resolve) => {
+      const t = setTimeout(resolve, 4000)
+      p.on('sync', (synced: boolean) => { if (synced) { clearTimeout(t); resolve() } })
+    })
+  }
+  const out = fn({ doc: d, items: d.getMap<Item>('items'), meta: d.getMap<unknown>('meta'), styles: d.getMap<TextStyle>('styles') })
+  await new Promise((r) => setTimeout(r, 700))
+  ws?.destroy()
+  await store.destroy()
+  d.destroy()
+  return out
+}
+
 // ---------------------------------------------------------------- snapshots
 
 let snapshot: Items = {}
@@ -124,10 +149,11 @@ export function itemsVersion () { return version }
 
 export type UiTheme = 'light' | 'dark'
 export type CanvasTheme = 'light' | 'dark' | 'custom'
-export interface BoardMeta { name: string; bg: string; ui: UiTheme; canvas: CanvasTheme }
+export interface BoardRef { id: string; name: string }
+export interface BoardMeta { name: string; bg: string; ui: UiTheme; canvas: CanvasTheme; parent: BoardRef | null }
 
 export const DEFAULT_BG = '#f4f4f2'
-export const meta = createStore<BoardMeta>({ name: 'Tableau sans titre', bg: DEFAULT_BG, ui: 'light', canvas: 'light' })
+export const meta = createStore<BoardMeta>({ name: 'Tableau sans titre', bg: DEFAULT_BG, ui: 'light', canvas: 'light', parent: null })
 metaMap.observe(() => {
   const bg = (metaMap.get('bg') as string) || DEFAULT_BG
   // Boards created before themes only stored a background colour.
@@ -136,7 +162,8 @@ metaMap.observe(() => {
     name: (metaMap.get('name') as string) || 'Tableau sans titre',
     bg,
     ui: (metaMap.get('ui') as UiTheme) || 'light',
-    canvas
+    canvas,
+    parent: (metaMap.get('parent') as BoardRef) || null
   })
   rememberBoard()
 })
@@ -226,7 +253,7 @@ export function updateItems (patches: Record<string, Partial<Item>>) {
 export function deleteItems (ids: string[]) {
   const all = snapshot
   const gone = new Set(ids)
-  for (const id of ids) if (all[id]?.type === 'frame') childrenOf(id).forEach((c) => gone.add(c.id))
+  for (const id of ids) if (all[id]?.type === 'frame') descendantsOf(id).forEach((c) => gone.add(c.id))
   for (const it of Object.values(all)) {
     if (it.type === 'connector' && ((it.from?.id && gone.has(it.from.id)) || (it.to?.id && gone.has(it.to.id)))) gone.add(it.id)
   }
@@ -237,19 +264,66 @@ export function childrenOf (frameId: string): Item[] {
   return Object.values(snapshot).filter((it) => it.parentId === frameId)
 }
 
+/** Everything nested inside a frame, at any depth. */
+export function descendantsOf (frameId: string): Item[] {
+  const out: Item[] = []
+  const queue = [frameId]
+  const seen = new Set(queue)
+  while (queue.length) {
+    const id = queue.shift()!
+    for (const it of Object.values(snapshot)) {
+      if (it.parentId === id && !seen.has(it.id)) { seen.add(it.id); out.push(it); queue.push(it.id) }
+    }
+  }
+  return out
+}
+
+/** Frame ancestors of an item, nearest first. */
+export function ancestorsOf (id: string): Item[] {
+  const out: Item[] = []
+  let cur = snapshot[id]?.parentId
+  while (cur && snapshot[cur] && !out.some((a) => a.id === cur)) { out.push(snapshot[cur]); cur = snapshot[cur].parentId }
+  return out
+}
+
+/** True when one of the item's ancestor frames is in `set`. */
+export function hasAncestorIn (id: string, set: Set<string>) {
+  return ancestorsOf(id).some((a) => set.has(a.id))
+}
+
 export function frames (): Item[] {
   return Object.values(snapshot).filter((it) => it.type === 'frame')
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.y - b.y || a.x - b.x)
 }
 
-/** Topmost frame whose bounds contain the item's center. */
+export interface FrameNode { frame: Item; depth: number; siblings: Item[] }
+
+/** Frames in reading order: each frame followed by the frames nested in it. */
+export function frameTree (): FrameNode[] {
+  const all = frames()
+  const out: FrameNode[] = []
+  const walk = (parentId: string | null, depth: number) => {
+    const siblings = all.filter((f) => (f.parentId ?? null) === parentId || (parentId === null && f.parentId && !snapshot[f.parentId]))
+    for (const f of siblings) { out.push({ frame: f, depth, siblings }); walk(f.id, depth + 1) }
+  }
+  walk(null, 0)
+  return out
+}
+
+/**
+ * Frame that should contain an item: the smallest frame holding its center,
+ * or, for a frame, the smallest larger frame holding it entirely (nesting).
+ */
 export function frameAt (it: Item, exclude?: Set<string>): Item | null {
-  if (it.type === 'frame' || it.type === 'connector') return null
+  if (it.type === 'connector') return null
+  const nested = it.type === 'frame'
   const c = center(it)
+  const below = nested ? new Set(descendantsOf(it.id).map((d) => d.id)) : null
   let best: Item | null = null
   for (const f of Object.values(snapshot)) {
-    if (f.type !== 'frame' || f.id === it.id || exclude?.has(f.id)) continue
-    if (contains(f, c) && (!best || f.w * f.h < best.w * best.h)) best = f
+    if (f.type !== 'frame' || f.id === it.id || exclude?.has(f.id) || below?.has(f.id)) continue
+    const fits = nested ? f.w * f.h > it.w * it.h && containsRect(f, it) : contains(f, c)
+    if (fits && (!best || f.w * f.h < best.w * best.h)) best = f
   }
   return best
 }
@@ -258,33 +332,24 @@ export function reparent (ids: string[]) {
   transact(() => {
     for (const id of ids) {
       const it = itemsMap.get(id)
-      if (!it || it.type === 'frame' || it.type === 'connector') continue
+      if (!it || it.type === 'connector') continue
       const parentId = frameAt(it)?.id ?? null
       if ((it.parentId ?? null) !== parentId) itemsMap.set(id, { ...it, parentId })
     }
   })
 }
 
-/** A frame adopts loose items whose center falls inside it (after create/resize). */
-export function adoptInto (frameId: string) {
-  const f = itemsMap.get(frameId)
-  if (!f) return
-  transact(() => {
-    for (const it of Object.values(snapshot)) {
-      if (it.type === 'frame' || it.type === 'connector') continue
-      const inside = contains(f, center(it))
-      if (inside && !it.parentId) itemsMap.set(it.id, { ...it, parentId: f.id })
-      else if (!inside && it.parentId === f.id) itemsMap.set(it.id, { ...it, parentId: frameAt(it)?.id ?? null })
-    }
-  })
+/** After a frame is created or resized, recompute which frame owns every item. */
+export function adoptInto (_frameId?: string) {
+  reparent(Object.keys(snapshot))
 }
 
-/** Move items by a world delta; frames carry their children, connectors their free ends. */
+/** Move items by a world delta; frames carry their content, connectors their free ends. */
 export function moveBy (deltas: Record<string, { dx: number; dy: number }>) {
   const all = snapshot
   const expanded: Record<string, { dx: number; dy: number }> = { ...deltas }
   for (const id in deltas) {
-    if (all[id]?.type === 'frame') for (const c of childrenOf(id)) if (!expanded[c.id]) expanded[c.id] = deltas[id]
+    if (all[id]?.type === 'frame') for (const c of descendantsOf(id)) if (!expanded[c.id]) expanded[c.id] = deltas[id]
   }
   transact(() => {
     for (const id in expanded) {

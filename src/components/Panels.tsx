@@ -2,43 +2,47 @@ import { useEffect, useState } from 'react'
 import {
   ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Grid3x3, LayoutGrid, Magnet, Maximize, Minus, Plus, X
 } from 'lucide-react'
-import { frames, updateItems, useItems } from '../board'
+import { ancestorsOf, frameTree, meta, updateItems, useItems } from '../board'
 import { camera, ui, useStore, zoomBy, zoomToRect, animateCamera, viewportSize } from '../store'
-import { addFrameFromPreset, fitAll } from '../actions'
+import { addFrameFromPreset, enterFocus, exitFocus, fitAll } from '../actions'
 import { PATTERNS } from './ItemView'
 import type { Item } from '../types'
 
 export function FramesPanel () {
   useItems()
   const selected = useStore(ui, (s) => s.selected)
-  const list = frames()
+  const focus = useStore(ui, (s) => s.focus)
+  const tree = frameTree()
 
-  const move = (i: number, dir: -1 | 1) => {
+  /** Swap a frame with its previous / next sibling. */
+  const move = (f: Item, siblings: Item[], dir: -1 | 1) => {
+    const i = siblings.findIndex((s) => s.id === f.id)
     const j = i + dir
-    if (j < 0 || j >= list.length) return
-    const a = list[i]; const b = list[j]
+    if (j < 0 || j >= siblings.length) return
     // Normalise orders first so swapping always works.
     const patches: Record<string, Partial<Item>> = {}
-    list.forEach((f, k) => { patches[f.id] = { order: k } })
-    patches[a.id] = { order: j }; patches[b.id] = { order: i }
+    siblings.forEach((s, k) => { patches[s.id] = { order: k } })
+    patches[f.id] = { order: j }; patches[siblings[j].id] = { order: i }
     updateItems(patches)
   }
 
   return (
     <aside className='frames-panel panel' data-scroll>
       <header>
-        <span>Cadres <small>{list.length}</small></span>
+        <span>Cadres <small>{tree.length}</small></span>
         <button className='icon' title='Nouveau cadre 16:9' onClick={() => addFrameFromPreset('16:9')}><Plus size={16} /></button>
       </header>
-      {!list.length && <p className='empty'>Aucun cadre. Utilisez l’outil Cadre (F) pour créer des artboards, puis reliez-les avec des connecteurs.</p>}
+      {!tree.length && <p className='empty'>Aucun cadre. Utilisez l’outil Cadre (F) pour créer des artboards, puis reliez-les avec des connecteurs.</p>}
       <ol>
-        {list.map((f, i) => (
-          <li key={f.id} className={selected.includes(f.id) ? 'active' : ''} onClick={() => { ui.set({ selected: [f.id] }); zoomToRect(f, 60, true, 4) }}>
+        {tree.map(({ frame: f, depth, siblings }, i) => (
+          <li key={f.id} className={`${selected.includes(f.id) ? 'active' : ''}${focus === f.id ? ' focused' : ''}`} style={{ paddingLeft: 6 + depth * 14 }}
+            onClick={() => { ui.set({ selected: [f.id] }); zoomToRect(f, 60, true, 4) }}
+            onDoubleClick={() => enterFocus(f.id)} title='Clic : aller au cadre — double-clic : entrer dedans'>
             <span className='thumb' style={{ aspectRatio: `${f.w} / ${f.h}`, background: f.fill ?? 'var(--frame-bg)', backgroundImage: PATTERNS[f.pattern ?? 'none'], backgroundSize: '6px 6px' }} />
             <span className='name'>{i + 1}. {f.title || 'Sans titre'}</span>
             <span className='order' onClick={(e) => e.stopPropagation()}>
-              <button className='icon' title='Monter' onClick={() => move(i, -1)}><ChevronUp size={14} /></button>
-              <button className='icon' title='Descendre' onClick={() => move(i, 1)}><ChevronDown size={14} /></button>
+              <button className='icon' title='Monter' onClick={() => move(f, siblings, -1)}><ChevronUp size={14} /></button>
+              <button className='icon' title='Descendre' onClick={() => move(f, siblings, 1)}><ChevronDown size={14} /></button>
             </span>
           </li>
         ))}
@@ -106,7 +110,7 @@ export function PreviewModal () {
 export function Presenter () {
   const idx = useStore(ui, (s) => s.presenting)
   useItems()
-  const list = frames()
+  const list = frameTree().map((n) => n.frame)
   useEffect(() => {
     if (idx === null) return
     const f = list[idx]
@@ -134,6 +138,27 @@ export function Presenter () {
       <span>{idx + 1} / {list.length} — {f?.title}</span>
       <button className='tool' onClick={() => ui.set({ presenting: Math.min(list.length - 1, idx + 1) })}><ChevronRight size={18} /></button>
       <button className='tool' title='Quitter (Échap)' onClick={() => ui.set({ presenting: null })}><X size={18} /></button>
+    </div>
+  )
+}
+
+/** Path of the entered frame; click a level to go back up. */
+export function FocusBar () {
+  const focus = useStore(ui, (s) => s.focus)
+  const items = useItems()
+  const name = useStore(meta, (m) => m.name)
+  const f = focus ? items[focus] : null
+  useEffect(() => { if (focus && !f) ui.set({ focus: null }) }, [focus, f])
+  if (!f) return null
+  const path = [...ancestorsOf(f.id)].reverse()
+  return (
+    <div className='focus-bar panel'>
+      <button className='crumb' onClick={() => { ui.set({ focus: null }); zoomToRect(f, 160, true, 1) }}>{name}</button>
+      {path.map((p) => (
+        <span key={p.id}>› <button className='crumb' onClick={() => enterFocus(p.id)}>{p.title || 'Sans titre'}</button></span>
+      ))}
+      <span>› <span className='crumb current'>{f.title || 'Sans titre'}</span></span>
+      <button className='tool' title='Sortir du cadre (Échap)' onClick={exitFocus}><X size={16} /></button>
     </div>
   )
 }

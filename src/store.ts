@@ -102,7 +102,7 @@ export function viewportCenterWorld () {
 
 // ---------------------------------------------------------------- UI state
 
-export type Tool = 'select' | 'hand' | 'frame' | 'sticky' | 'text' | 'shape' | 'connector'
+export type Tool = 'select' | 'hand' | 'frame' | 'sticky' | 'text' | 'shape' | 'connector' | 'board'
 export type WheelMode = 'auto' | 'zoom' | 'scroll'
 
 export interface Guide { x1: number; y1: number; x2: number; y2: number }
@@ -135,6 +135,8 @@ export interface UiState {
   defaultRoute: Route
   shapeKind: ShapeKind
   stickyColor: string
+  /** Frame the user has entered (double click); everything else is dimmed. */
+  focus: string | null
   toast: string | null
 }
 
@@ -160,6 +162,7 @@ export const ui = createStore<UiState>({
   defaultRoute: saved.defaultRoute ?? 'curved',
   shapeKind: saved.shapeKind ?? 'rect',
   stickyColor: saved.stickyColor ?? '#fde68a',
+  focus: null,
   toast: null
 })
 

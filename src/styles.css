@@ -355,3 +355,30 @@ kbd { background: var(--hover); border: 1px solid var(--line); border-bottom-wid
 .style-actions button.danger:hover { color: #dc2626; }
 .style-form { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 8px; background: var(--hover); }
 .style-form input:not([type]) { border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; background: var(--field); }
+
+/* focus mode (entered frame) */
+.item.dimmed { opacity: .14; pointer-events: none; filter: grayscale(1); transition: opacity .2s; }
+.connector.dimmed { opacity: .14; pointer-events: none; }
+.focus-bar { left: 50%; top: 12px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 6px 6px 6px 12px; height: 48px; font-size: 13px; }
+.focus-bar .crumb { border: 0; background: none; padding: 4px 6px; border-radius: 6px; color: var(--muted); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.focus-bar .crumb:hover { background: var(--hover); color: var(--ink); }
+.focus-bar .crumb.current { color: var(--ink); font-weight: 600; }
+.frames-panel li.focused .name { font-weight: 600; color: var(--accent); }
+
+/* sub-board cards */
+.board-card { position: absolute; inset: 0; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; background: var(--card-bg); color: var(--card-ink);
+  box-shadow: 0 0 0 1px var(--frame-edge), 0 6px 18px rgba(0,0,0,.12); border-top: 6px solid var(--card-accent); }
+.bc-map { position: relative; flex: 1; margin: 12px 12px 0; border-radius: 8px; background: color-mix(in srgb, var(--card-accent) 10%, var(--card-thumb)); overflow: hidden; }
+.bc-map span { position: absolute; border-radius: 2px; }
+.bc-frame { background: var(--frame-bg); box-shadow: 0 0 0 1px color-mix(in srgb, var(--card-accent) 45%, transparent); }
+.bc-item { background: color-mix(in srgb, var(--card-accent) 55%, transparent); }
+.bc-empty { inset: 0; display: grid; place-items: center; color: var(--card-muted); font-size: 12px; }
+.bc-body { padding: 10px 14px 12px; }
+.bc-title { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 16px; }
+.bc-title svg { color: var(--card-accent); flex: 0 0 auto; }
+.bc-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bc-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--card-muted); font-size: 12px; margin-top: 2px; }
+.lod-low .bc-meta span { display: none; }
+.viewport.tool-board { cursor: copy; }
+.parent-link { color: var(--muted); text-decoration: none; padding: 4px 8px; border-radius: 6px; white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.parent-link:hover { background: var(--hover); color: var(--ink); }

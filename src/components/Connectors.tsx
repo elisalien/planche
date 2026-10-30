@@ -4,7 +4,7 @@ import { updateItem } from '../board'
 import { ui, useStore } from '../store'
 import type { Item, Items } from '../types'
 
-const Connector = memo(function Connector ({ it, all, selected }: { it: Item; all: Items; selected: boolean }) {
+const Connector = memo(function Connector ({ it, all, selected, dim }: { it: Item; all: Items; selected: boolean; dim: boolean }) {
   const { a, b, na, nb } = connectorEnds(it, all)
   const g = connectorGeometry(a, b, na, nb, it.route ?? 'curved')
   const color = it.color ?? 'var(--canvas-ink)'
@@ -12,7 +12,7 @@ const Connector = memo(function Connector ({ it, all, selected }: { it: Item; al
   const editing = useStore(ui, (s) => s.editing === it.id)
   const head = 8 + w * 2.5
   return (
-    <g data-id={it.id} className={`connector${selected ? ' selected' : ''}`}>
+    <g data-id={it.id} className={`connector${selected ? ' selected' : ''}${dim ? ' dimmed' : ''}`}>
       <path className='hit' d={g.d} />
       {selected && <path d={g.d} stroke='#3b82f6' strokeWidth={w + 6} strokeOpacity={0.25} fill='none' strokeLinecap='round' />}
       <path d={g.d} style={{ stroke: color }} strokeWidth={w} fill='none' strokeLinecap='round' strokeLinejoin='round' strokeDasharray={it.dash ? `${w * 4} ${w * 3}` : undefined} />
@@ -37,11 +37,14 @@ const Connector = memo(function Connector ({ it, all, selected }: { it: Item; al
   )
 })
 
-export function Connectors ({ items, list }: { items: Items; list: Item[] }) {
+export function Connectors ({ items, list, focusSet }: { items: Items; list: Item[]; focusSet: Set<string> | null }) {
   const selected = useStore(ui, (s) => s.selected)
   return (
     <svg className='connectors'>
-      {list.map((it) => <Connector key={it.id} it={it} all={items} selected={selected.includes(it.id)} />)}
+      {list.map((it) => (
+        <Connector key={it.id} it={it} all={items} selected={selected.includes(it.id)}
+          dim={!!focusSet && !(it.from?.id && focusSet.has(it.from.id)) && !(it.to?.id && focusSet.has(it.to.id))} />
+      ))}
     </svg>
   )
 }

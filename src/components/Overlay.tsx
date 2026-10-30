@@ -3,7 +3,7 @@ import {
   AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalDistributeCenter,
   AlignStartHorizontal, AlignStartVertical, AlignVerticalDistributeCenter, Frame as FrameIcon, Grid2x2, Lock
 } from 'lucide-react'
-import { updateItem, usePeers, useItems } from '../board'
+import { hasAncestorIn, updateItem, usePeers, useItems } from '../board'
 import { connectorEnds, connectorGeometry, facingSide, itemsBounds, sidePoint } from '../geometry'
 import { camera, ui, useStore, viewportSize } from '../store'
 import { align, distribute, tidy } from '../align'
@@ -83,7 +83,7 @@ export function Overlay () {
       {/* Frame titles: constant screen size, truncated to the frame width, big overview labels when far away. */}
       {frames.map((f) => {
         const r = R(f)
-        if (!visible(r, 60) || f.hideTitle) return null
+        if (!visible(r, 60) || f.hideTitle || (s.focus && f.id !== s.focus && !hasAncestorIn(f.id, new Set([s.focus])))) return null
         const label = f.title || 'Sans titre'
         const editing = s.editing === f.id
         const sel = s.selected.includes(f.id)

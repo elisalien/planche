@@ -1,5 +1,5 @@
 import {
-  addItems, adoptInto, childrenOf, deleteItems, frameAt, frames, getItems, maxZ, moveBy, newId,
+  addItems, adoptInto, ancestorsOf, childrenOf, deleteItems, descendantsOf, hasAncestorIn, frameAt, frames, getItems, maxZ, moveBy, newId,
   selectionBounds, transact, undoManager, updateItems
 } from './board'
 import { itemsBounds } from './geometry'
@@ -53,7 +53,7 @@ export function addFrameFromPreset (presetId: string) {
 export function collectWithChildren (ids: string[]): Item[] {
   const all = getItems()
   const set = new Set(ids.filter((id) => all[id]))
-  for (const id of [...set]) if (all[id].type === 'frame') childrenOf(id).forEach((c) => set.add(c.id))
+  for (const id of [...set]) if (all[id].type === 'frame') descendantsOf(id).forEach((c) => set.add(c.id))
   for (const it of Object.values(all)) {
     if (it.type === 'connector' && it.from?.id && it.to?.id && set.has(it.from.id) && set.has(it.to.id)) set.add(it.id)
   }
@@ -109,7 +109,7 @@ export function pasteClip (text: string, at: Point | null) {
   const clones = cloneItems(list, target.x - (b.x + b.w / 2), target.y - (b.y + b.h / 2))
   // Pasted roots land in whatever frame is under them.
   const ids = new Set(clones.map((c) => c.id))
-  for (const c of clones) if (c.type !== 'frame' && c.type !== 'connector' && !(c.parentId && ids.has(c.parentId))) c.parentId = frameAt(c)?.id ?? null
+  for (const c of clones) if (c.type !== 'connector' && !(c.parentId && ids.has(c.parentId))) c.parentId = frameAt(c)?.id ?? null
   addItems(clones)
   select(clones.filter((c) => !(c.parentId && ids.has(c.parentId))).map((c) => c.id))
   return true
@@ -142,7 +142,8 @@ export function toggleLock () {
 
 /** Wrap the selection in a new frame with padding (Shift+F). */
 export function frameSelection () {
-  const ids = ui.get().selected.filter((id) => getItems()[id]?.type !== 'frame')
+  const sel = new Set(ui.get().selected)
+  const ids = [...sel].filter((id) => getItems()[id] && !hasAncestorIn(id, sel))
   const b = selectionBounds(ids)
   if (!b) return
   const pad = 48
@@ -166,7 +167,7 @@ export function fitFrameToContent (frameId: string) {
 export function nudge (dx: number, dy: number) {
   const all = getItems()
   const sel = new Set(ui.get().selected)
-  const ids = [...sel].filter((id) => all[id] && !all[id].locked && !(all[id].parentId && sel.has(all[id].parentId!)))
+  const ids = [...sel].filter((id) => all[id] && !all[id].locked && !hasAncestorIn(id, sel))
   if (ids.length) moveBy(Object.fromEntries(ids.map((id) => [id, { dx, dy }])))
 }
 
@@ -179,6 +180,23 @@ export function fitAll () {
 export function zoomToSelection () {
   const b = selectionBounds(ui.get().selected)
   if (b) zoomToRect(b, 80, true, 2)
+}
+
+/** Enter a frame: zoom onto it and dim everything outside. */
+export function enterFocus (frameId: string) {
+  const f = getItems()[frameId]
+  if (!f) return
+  ui.set({ focus: frameId, selected: [] })
+  zoomToRect(f, 40, true, 4)
+}
+
+/** Leave the entered frame, to its parent frame or to the whole board. */
+export function exitFocus () {
+  const cur = ui.get().focus
+  if (!cur) return
+  const parent = ancestorsOf(cur)[0]
+  if (parent) enterFocus(parent.id)
+  else { ui.set({ focus: null }); const f = getItems()[cur]; if (f) zoomToRect(f, 160, true, 1) }
 }
 
 export function undo () { undoManager.undo(); ui.set({ selected: ui.get().selected.filter((id) => getItems()[id]) }) }

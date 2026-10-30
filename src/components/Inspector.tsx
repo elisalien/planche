@@ -2,7 +2,7 @@ import {
   AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical,
   AlignHorizontalDistributeCenter, AlignStartHorizontal, AlignStartVertical,
   AlignVerticalDistributeCenter, BringToFront, Copy, Frame as FrameIcon, Grid2x2, Lock, LockOpen, Maximize, SendToBack,
-  Shrink, Trash2
+  LayoutGrid, LogIn, Shrink, Trash2
 } from 'lucide-react'
 import { getItems, transact, updateItem, useItems } from '../board'
 import { ui, useStore, zoomToRect } from '../store'
@@ -12,12 +12,13 @@ import {
 } from '../actions'
 import { align, distribute, matchSize, tidy } from '../align'
 import { detectVideo, unfurlInto } from '../media'
+import { convertFrameToBoard, enterBoard, renameSubBoard } from '../subboards'
 import { Seg, Swatches, patchAll } from './controls'
 import { TypographyPanel } from './Typography'
 import type { FramePattern, Item, Route, ShapeKind } from '../types'
 
 const TYPE_LABEL: Record<string, string> = {
-  frame: 'Cadre', sticky: 'Post-it', text: 'Texte', shape: 'Forme', link: 'Lien', video: 'Vidéo', image: 'Image', connector: 'Connecteur'
+  frame: 'Cadre', board: 'Sous-board', sticky: 'Post-it', text: 'Texte', shape: 'Forme', link: 'Lien', video: 'Vidéo', image: 'Image', connector: 'Connecteur'
 }
 
 function Num ({ value, onChange, label }: { value: number; onChange: (v: number) => void; label: string }) {
@@ -62,9 +63,25 @@ function FrameSection ({ f }: { f: Item }) {
         <button className='btn' onClick={() => zoomToRect(f, 40, true, 4)}><Maximize size={14} /> Zoomer</button>
         <button className='btn' onClick={() => fitFrameToContent(f.id)}><Shrink size={14} /> Ajuster au contenu</button>
       </div>
+      <button className='btn wide' title='Déplace le cadre et son contenu dans un tableau séparé, relié par une carte' onClick={() => convertFrameToBoard(f.id)}><LayoutGrid size={14} /> Convertir en sous-board</button>
     </section>
   )
 }
+
+function BoardSection ({ it }: { it: Item }) {
+  return (
+    <section>
+      <h4>Sous-board</h4>
+      <input className='wide' defaultValue={it.title} key={it.title} placeholder='Nom du board' onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+        onBlur={(e) => { const n = e.target.value.trim(); if (n && n !== it.title) renameSubBoard(it, n) }} />
+      <div className='label'>Couleur</div>
+      <Swatches colors={BOARD_COLORS} value={it.fill} onPick={(fill) => updateItem(it.id, { fill })} />
+      <button className='btn wide primary' onClick={() => enterBoard(it)}><LogIn size={14} /> Entrer dans le board</button>
+    </section>
+  )
+}
+
+const BOARD_COLORS = ['#6366f1', '#2563eb', '#0891b2', '#16a34a', '#ca8a04', '#ea580c', '#dc2626', '#db2777', '#7c3aed', '#475569']
 
 function ConnectorSection ({ list }: { list: Item[] }) {
   const c = list[0]
@@ -181,6 +198,7 @@ export function Inspector () {
       {textual.length > 0 && <TypographyPanel list={textual} />}
       {connectors.length > 0 && <ConnectorSection list={connectors} />}
       {one && (one.type === 'link' || one.type === 'video') && <LinkSection it={one} />}
+      {one?.type === 'board' && <BoardSection it={one} />}
       {one && one.type !== 'connector' && one.type !== 'frame' && (
         <section>
           <h4>Dimensions</h4>

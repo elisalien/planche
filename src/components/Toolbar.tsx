@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import {
-  Circle, Diamond, Frame, Hand, Image as ImageIcon, Link2, MousePointer2, Redo2, Spline, Square, SquareRoundCorner,
+  Circle, Diamond, Frame, Hand, LayoutGrid, Image as ImageIcon, Link2, MousePointer2, Redo2, Spline, Square, SquareRoundCorner,
   StickyNote, Type, Undo2
 } from 'lucide-react'
 import { ui, useStore, viewportCenterWorld, type Tool } from '../store'
@@ -81,6 +81,7 @@ export function Toolbar () {
         )}
       </div>
       <ToolButton tool='connector' icon={<Spline size={18} />} label='Connecteur' keyHint='L' />
+      <ToolButton tool='board' icon={<LayoutGrid size={18} />} label='Sous-board (double-clic pour entrer)' keyHint='B' />
       <div className='sep' />
       <button className='tool' title='Lien ou vidéo (ou collez une URL avec Ctrl+V)' onClick={addLink}><Link2 size={18} /></button>
       <button className='tool' title='Image' onClick={() => fileRef.current?.click()}><ImageIcon size={18} /></button>

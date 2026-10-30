@@ -30,6 +30,7 @@ export function TopBar () {
     <>
       <div className='topbar left panel'>
         <button className='tool' title='Menu' onClick={() => setMenu(menu === 'main' ? null : 'main')}><Menu size={18} /></button>
+        {m.parent && <a className='parent-link' href={`#/b/${m.parent.id}`} title='Remonter au board parent'>‹ {m.parent.name}</a>}
         <input className='board-name' value={m.name} onChange={(e) => setMeta('name', e.target.value)} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} />
         <button className='tool' title='Cadres' onClick={() => ui.set({ framesPanel: !ui.get().framesPanel })}><PanelLeft size={18} /></button>
       </div>

@@ -1,4 +1,4 @@
-import { getItems, moveBy, reparent, updateItems } from './board'
+import { getItems, hasAncestorIn, moveBy, reparent, updateItems } from './board'
 import type { Item, Rect } from './types'
 
 export type AlignOp = 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom'
@@ -9,7 +9,7 @@ function targets (ids: string[]): Item[] {
   const all = getItems()
   const set = new Set(ids)
   return ids.map((id) => all[id]).filter((it): it is Item =>
-    !!it && it.type !== 'connector' && !it.locked && !(it.parentId && set.has(it.parentId)))
+    !!it && it.type !== 'connector' && !it.locked && !hasAncestorIn(it.id, set))
 }
 
 function apply (deltas: Record<string, { dx: number; dy: number }>) {
