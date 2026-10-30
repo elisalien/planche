@@ -1,6 +1,8 @@
 # Planche
 
 Tableau blanc infini, local d'abord, collaboratif en temps réel et auto-hébergeable gratuitement.
+Instance en ligne : https://planche-elpl.onrender.com
+
 Inspiré de l'usage d'outils comme Miro, sans en reprendre le code ni la marque.
 
 ## Fonctions
