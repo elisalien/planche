@@ -18,6 +18,7 @@ import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
 import { unfurl } from './unfurl.mjs'
 import { createStore } from './storage.mjs'
+import { handleUpload, imageConfig } from './images.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DEV = process.argv.includes('--dev')
@@ -25,6 +26,7 @@ const PORT = Number(process.env.PORT || 8787)
 const HOST = process.env.HOST || '0.0.0.0'
 const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(ROOT, 'data'))
 const store = await createStore({ databaseUrl: process.env.DATABASE_URL, dataDir: DATA_DIR })
+const images = imageConfig(process.env)
 
 // ---------------------------------------------------------------- Yjs rooms
 
@@ -171,6 +173,10 @@ const MIME = {
 }
 
 async function handleApi (req, res, url) {
+  if (url.pathname === '/api/upload') {
+    await handleUpload(images, req, res, url)
+    return true
+  }
   if (url.pathname === '/api/unfurl') {
     const target = url.searchParams.get('url') || ''
     try {
@@ -185,7 +191,7 @@ async function handleApi (req, res, url) {
   }
   if (url.pathname === '/api/health') {
     res.writeHead(200, { 'content-type': 'application/json' })
-    res.end(JSON.stringify({ ok: true, rooms: rooms.size, storage: process.env.DATABASE_URL ? 'postgres' : 'disk' }))
+    res.end(JSON.stringify({ ok: true, rooms: rooms.size, storage: process.env.DATABASE_URL ? 'postgres' : 'disk', images: images ? 's3' : 'inline' }))
     return true
   }
   return false
@@ -267,5 +273,5 @@ process.on('SIGINT', shutdown)
 process.on('SIGTERM', shutdown)
 
 server.listen(PORT, HOST, () => {
-  console.log(`Planche ${DEV ? '(dev) ' : ''}-> http://localhost:${PORT}  (stockage : ${store.describe()})`)
+  console.log(`Planche ${DEV ? '(dev) ' : ''}-> http://localhost:${PORT}  (stockage : ${store.describe()}, images : ${images ? images.publicUrl : 'dans les boards'})`)
 })

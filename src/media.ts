@@ -1,5 +1,5 @@
-import { addItems, frameAt, getItem, maxZ, newId, updateItem } from './board'
-import { select } from './store'
+import { addItems, boardId, frameAt, getItem, maxZ, newId, updateItem } from './board'
+import { select, toast, ui } from './store'
 import type { Item, LinkMeta, Point, VideoInfo } from './types'
 
 export const URL_RE = /^https?:\/\/[^\s]+$/i
@@ -100,22 +100,52 @@ export function createTextItem (text: string, at: Point) {
   select([it.id])
 }
 
-/** Downscale large images so they stay reasonable inside the shared document. */
-export function createImageItem (file: Blob, at: Point) {
-  const img = new Image()
-  const url = URL.createObjectURL(file)
-  img.onload = () => {
-    const max = 1600
-    const s = Math.min(1, max / Math.max(img.width, img.height))
-    const c = document.createElement('canvas')
-    c.width = Math.round(img.width * s); c.height = Math.round(img.height * s)
-    c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height)
-    const src = c.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.85)
-    URL.revokeObjectURL(url)
-    const w = Math.min(480, c.width); const h = w * c.height / c.width
-    const it = placed({ id: newId(), type: 'image', src, x: at.x - w / 2, y: at.y - h / 2, w, h, z: maxZ() + 1 })
-    addItems([it])
-    select([it.id])
-  }
-  img.src = url
+function loadImage (file: Blob): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img) }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image illisible')) }
+    img.src = url
+  })
+}
+
+function downscale (img: HTMLImageElement, max: number) {
+  const s = Math.min(1, max / Math.max(img.width, img.height))
+  const c = document.createElement('canvas')
+  c.width = Math.round(img.width * s); c.height = Math.round(img.height * s)
+  c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height)
+  return c
+}
+
+let warnedInline = false
+
+/**
+ * Upload to the server's S3-compatible storage so the board only keeps a URL.
+ * Without configured storage, fall back to a downscaled image inside the board.
+ */
+async function storeImage (file: Blob, img: HTMLImageElement): Promise<string> {
+  const png = file.type === 'image/png'
+  // Animated GIFs (and already small files) are sent untouched.
+  const keep = file.type === 'image/gif' || (file.size < 1_500_000 && Math.max(img.width, img.height) <= 2400)
+  try {
+    const body = keep ? file : await new Promise<Blob>((resolve, reject) => downscale(img, 2400).toBlob((b) => (b ? resolve(b) : reject(new Error('encodage'))), png ? 'image/png' : 'image/jpeg', 0.88))
+    const r = await fetch(`/api/upload?board=${encodeURIComponent(boardId)}`, { method: 'POST', body })
+    if (r.ok) return (await r.json()).url
+    if (r.status !== 501 && r.status !== 404) toast(`Image gardée dans le board : ${(await r.json().catch(() => ({}))).error ?? r.status}`)
+  } catch { /* no server: keep it inline */ }
+  if (!warnedInline) { warnedInline = true; console.info('Images stored inside the board (no external storage configured).') }
+  return downscale(img, 1600).toDataURL(png ? 'image/png' : 'image/jpeg', 0.85)
+}
+
+export async function createImageItem (file: Blob, at: Point) {
+  let img: HTMLImageElement
+  try { img = await loadImage(file) } catch { toast('Image illisible'); return }
+  toast('Envoi de l’image…')
+  const src = await storeImage(file, img)
+  const w = Math.min(480, img.width); const h = w * img.height / img.width
+  const it = placed({ id: newId(), type: 'image', src, x: at.x - w / 2, y: at.y - h / 2, w, h, z: maxZ() + 1 })
+  addItems([it])
+  select([it.id])
+  ui.set({ toast: null })
 }

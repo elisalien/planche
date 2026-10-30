@@ -77,6 +77,23 @@ gratuite : les boards y sont enregistrés et survivent aux mises en veille et re
 
 Sans `DATABASE_URL`, le serveur enregistre dans `DATA_DIR` (disque local).
 
+## Images hors du board (gratuit, Cloudflare R2)
+
+Par défaut, une image collée est enregistrée dans le board : chaque participant la télécharge en
+rejoignant. Avec un stockage compatible S3, le board ne garde qu'un lien et l'image est servie par
+le stockage (R2 : 10 Go gratuits, sortie gratuite).
+
+1. Cloudflare → **R2** → créez un bucket (ex. `planche`).
+2. Bucket → **Settings** → **Public access** → activez l'URL `r2.dev` et copiez-la (`https://pub-….r2.dev`).
+3. R2 → **Manage API tokens** → **Create API token**, permission *Object Read & Write* limitée au bucket.
+   Notez l'*Access Key ID*, le *Secret Access Key* et l'endpoint `https://<account-id>.r2.cloudflarestorage.com`.
+4. Render → **Environment** : `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_URL`.
+5. `/api/health` répond `"images":"s3"`.
+
+Formats acceptés : PNG, JPEG, GIF (animation conservée), WebP, 10 Mo max, 120 envois par heure et par IP.
+Cloudflare limite le débit des URL `r2.dev` ; pour un usage intensif, reliez un domaine personnalisé au bucket.
+Backblaze B2 ou Supabase Storage fonctionnent aussi (mêmes variables). Sans configuration, rien ne change.
+
 ## Installation automatique (release)
 
 Windows (PowerShell) :

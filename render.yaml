@@ -11,3 +11,14 @@ services:
       # Set it in the Render dashboard: Environment > DATABASE_URL.
       - key: DATABASE_URL
         sync: false
+      # Optional S3-compatible image storage (e.g. Cloudflare R2), see README.
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_PUBLIC_URL
+        sync: false
