@@ -28,6 +28,8 @@ type Drag =
 export const pointer = { world: null as Point | null }
 
 const SNAP_PX = 6
+/** Screen pixels around the hovered item that keep its anchors visible. */
+const HOVER_MARGIN = 28
 
 function snapOpts (alt: boolean) {
   const s = ui.get()
@@ -286,10 +288,21 @@ export function Canvas () {
 
     if (!d) {
       const t = e.target as HTMLElement
-      const host = t.closest('[data-anchor-id],[data-frame-title],[data-id]') as HTMLElement | null
-      let id = host ? (host.dataset.anchorId ?? host.dataset.frameTitle ?? host.dataset.id ?? null) : null
-      if (id && (getItems()[id]?.type === 'connector' || getItems()[id]?.locked)) id = null
-      if (id !== ui.get().hoverId) ui.set({ hoverId: id })
+      const host = t.closest('[data-anchor-id],[data-frame-title],[data-id],[data-handle]') as HTMLElement | null
+      const all = getItems()
+      let id: string | null = null
+      if (host?.dataset.handle) id = ui.get().selected[0] ?? null
+      else if (host) id = host.dataset.anchorId ?? host.dataset.frameTitle ?? host.dataset.id ?? null
+      if (id && (all[id]?.type === 'connector' || all[id]?.locked)) id = null
+      // Keep the current hover while the pointer travels from the item out to its
+      // anchor dots (which sit outside the item, over empty canvas or a parent frame).
+      const cur = ui.get().hoverId
+      const r = cur ? all[cur] : undefined
+      if (r && cur !== id && (!id || (all[id]?.type === 'frame' && r.type !== 'frame'))) {
+        const m = HOVER_MARGIN / zoom
+        if (p.x >= r.x - m && p.x <= r.x + r.w + m && p.y >= r.y - m && p.y <= r.y + r.h + m) id = cur
+      }
+      if (id !== cur) ui.set({ hoverId: id })
       return
     }
 
