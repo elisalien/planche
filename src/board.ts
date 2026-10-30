@@ -117,15 +117,37 @@ export function useItem (id: string | null | undefined) {
 }
 export function itemsVersion () { return version }
 
-export const meta = createStore<{ name: string; bg: string }>({ name: 'Tableau sans titre', bg: '#f4f4f2' })
+export type UiTheme = 'light' | 'dark'
+export type CanvasTheme = 'light' | 'dark' | 'custom'
+export interface BoardMeta { name: string; bg: string; ui: UiTheme; canvas: CanvasTheme }
+
+export const DEFAULT_BG = '#f4f4f2'
+export const meta = createStore<BoardMeta>({ name: 'Tableau sans titre', bg: DEFAULT_BG, ui: 'light', canvas: 'light' })
 metaMap.observe(() => {
+  const bg = (metaMap.get('bg') as string) || DEFAULT_BG
+  // Boards created before themes only stored a background colour.
+  const canvas = (metaMap.get('canvas') as CanvasTheme) || (bg !== DEFAULT_BG ? 'custom' : 'light')
   meta.set({
     name: (metaMap.get('name') as string) || 'Tableau sans titre',
-    bg: (metaMap.get('bg') as string) || '#f4f4f2'
+    bg,
+    ui: (metaMap.get('ui') as UiTheme) || 'light',
+    canvas
   })
   rememberBoard()
 })
-export function setMeta (key: 'name' | 'bg', value: string) { doc.transact(() => metaMap.set(key, value)) }
+export function setMeta<K extends keyof BoardMeta> (key: K, value: BoardMeta[K]) { doc.transact(() => metaMap.set(key, value)) }
+
+function luminance (hex: string) {
+  const m = hex.replace('#', '').match(/.{2}/g)
+  if (!m || m.length < 3) return 1
+  const [r, g, b] = m.map((h) => parseInt(h, 16) / 255)
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+/** Whether the canvas is dark, accounting for custom background colours. */
+export function canvasIsDark (m: BoardMeta = meta.get()) {
+  return m.canvas === 'dark' || (m.canvas === 'custom' && luminance(m.bg) < 0.45)
+}
 export function useMeta () { return useStore(meta, (m) => m) }
 
 // ---------------------------------------------------------------- presence
@@ -284,7 +306,7 @@ export function selectionBounds (ids: string[]) {
 // ---------------------------------------------------------------- import / export
 
 export function exportBoard () {
-  return JSON.stringify({ format: 'planche', version: 1, name: meta.get().name, bg: meta.get().bg, items: Object.values(snapshot) }, null, 2)
+  return JSON.stringify({ format: 'planche', version: 1, name: meta.get().name, bg: meta.get().bg, ui: meta.get().ui, canvas: meta.get().canvas, items: Object.values(snapshot) }, null, 2)
 }
 
 export function importBoard (json: string, replace: boolean) {
@@ -295,6 +317,8 @@ export function importBoard (json: string, replace: boolean) {
       itemsMap.clear()
       if (data.name) metaMap.set('name', data.name)
       if (data.bg) metaMap.set('bg', data.bg)
+      if (data.ui) metaMap.set('ui', data.ui)
+      if (data.canvas) metaMap.set('canvas', data.canvas)
     }
     for (const it of data.items as Item[]) itemsMap.set(it.id, it)
   })

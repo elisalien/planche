@@ -10,9 +10,9 @@ export const playing = createStore<{ id: string | null }>({ id: null })
 
 export const PATTERNS: Record<string, string> = {
   none: 'none',
-  dots: 'radial-gradient(circle, rgba(0,0,0,.18) 1px, transparent 1.4px)',
-  grid: 'linear-gradient(rgba(0,0,0,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.07) 1px, transparent 1px)',
-  lines: 'linear-gradient(rgba(0,0,0,.08) 1px, transparent 1px)'
+  dots: 'radial-gradient(circle, var(--pattern) 1px, transparent 1.4px)',
+  grid: 'linear-gradient(var(--pattern) 1px, transparent 1px), linear-gradient(90deg, var(--pattern) 1px, transparent 1px)',
+  lines: 'linear-gradient(var(--pattern) 1px, transparent 1px)'
 }
 
 function EditableText ({ it, className, style }: { it: Item; className?: string; style?: React.CSSProperties }) {
@@ -116,7 +116,7 @@ function Frame ({ it }: { it: Item }) {
   const pattern = it.pattern ?? 'none'
   return (
     <div className='frame' style={{
-      background: it.fill ?? '#ffffff',
+      background: it.fill ?? 'var(--frame-bg)',
       backgroundImage: PATTERNS[pattern],
       backgroundSize: pattern === 'lines' ? '100% 32px' : '24px 24px',
       borderRadius: it.radius ?? 0
@@ -186,7 +186,7 @@ export const ItemView = memo(function ItemView ({ it }: { it: Item }) {
     case 'frame': body = <Frame it={it} />; break
     case 'sticky': body = <Sticky it={it} />; break
     case 'shape': body = <Shape it={it} />; break
-    case 'text': body = <EditableText it={it} className='free' style={{ fontSize: it.fontSize ?? 18, color: it.color ?? '#1f2937', textAlign: it.align ?? 'left' }} />; break
+    case 'text': body = <EditableText it={it} className='free' style={{ fontSize: it.fontSize ?? 18, color: it.color ?? 'var(--canvas-ink)', textAlign: it.align ?? 'left' }} />; break
     case 'link': body = <LinkCard it={it} />; break
     case 'video': body = <VideoCard it={it} />; break
     case 'image': body = <img className='image' src={it.src} alt='' draggable={false} />; break

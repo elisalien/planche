@@ -29,7 +29,7 @@ export function nextFrameOrder () {
 
 export function newFrame (r: { x: number; y: number; w: number; h: number }, preset?: string): Item {
   const n = frames().length + 1
-  return { id: newId(), type: 'frame', ...r, z: 0, title: `Cadre ${n}`, fill: '#ffffff', pattern: 'none', radius: 0, order: nextFrameOrder(), preset }
+  return { id: newId(), type: 'frame', ...r, z: 0, title: `Cadre ${n}`, pattern: 'none', radius: 0, order: nextFrameOrder(), preset }
 }
 
 /** Free space to the right of existing frames, so new boards line up like artboards. */

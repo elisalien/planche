@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Download, FilePlus2, FolderOpen, Menu, PanelLeft, Presentation, Settings, Share2, Upload } from 'lucide-react'
+import { Download, FilePlus2, FolderOpen, Menu, Moon, PanelLeft, Presentation, Settings, Share2, Sun, Upload } from 'lucide-react'
 import { boardId, exportBoard, frames, importBoard, me, net, newId, recentBoards, setMe, setMeta, useMeta, usePeers } from '../board'
 import { toast, ui, useStore, type WheelMode } from '../store'
 
@@ -11,6 +11,7 @@ export function TopBar () {
   const [name, setName] = useState(me.name)
   const fileRef = useRef<HTMLInputElement>(null)
   const wheelMode = useStore(ui, (s) => s.wheelMode)
+  const dark = m.ui === 'dark'
 
   const share = async () => {
     try { await navigator.clipboard.writeText(location.href); toast('Lien du tableau copié') } catch { prompt('Lien du tableau :', location.href) }
@@ -42,6 +43,10 @@ export function TopBar () {
         </div>
         <button className='btn' onClick={() => { if (frames().length) ui.set({ presenting: 0, selected: [] }); else toast('Ajoutez des cadres pour présenter') }} title='Présenter les cadres (P)'><Presentation size={16} /> Présenter</button>
         <button className='btn primary' onClick={share}><Share2 size={16} /> Partager</button>
+        <button className='tool' title={dark ? 'Mode clair (interface + canevas)' : 'Mode sombre (interface + canevas)'} onClick={() => {
+          setMeta('ui', dark ? 'light' : 'dark')
+          setMeta('canvas', dark ? 'light' : 'dark')
+        }}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button>
         <button className='tool' title='Paramètres' onClick={() => setMenu(menu === 'settings' ? null : 'settings')}><Settings size={18} /></button>
       </div>
 
@@ -69,9 +74,27 @@ export function TopBar () {
           <label>Couleur
             <input type='color' defaultValue={me.color} onChange={(e) => setMe({ color: e.target.value })} />
           </label>
-          <label>Fond du tableau
-            <input type='color' value={m.bg} onChange={(e) => setMeta('bg', e.target.value)} />
-          </label>
+          <div className='settings-group'>
+            <span>Apparence de ce tableau (pour tous)</span>
+            <div className='row'>Interface
+              <div className='seg'>
+                <button className={m.ui === 'light' ? 'active' : ''} onClick={() => setMeta('ui', 'light')}><Sun size={14} /> Clair</button>
+                <button className={m.ui === 'dark' ? 'active' : ''} onClick={() => setMeta('ui', 'dark')}><Moon size={14} /> Sombre</button>
+              </div>
+            </div>
+            <div className='row'>Canevas
+              <div className='seg'>
+                <button className={m.canvas === 'light' ? 'active' : ''} onClick={() => setMeta('canvas', 'light')}>Clair</button>
+                <button className={m.canvas === 'dark' ? 'active' : ''} onClick={() => setMeta('canvas', 'dark')}>Noir</button>
+                <button className={m.canvas === 'custom' ? 'active' : ''} onClick={() => setMeta('canvas', 'custom')}>Couleur</button>
+              </div>
+            </div>
+            {m.canvas === 'custom' && (
+              <div className='row'>Couleur du canevas
+                <input type='color' value={m.bg} onChange={(e) => setMeta('bg', e.target.value)} />
+              </div>
+            )}
+          </div>
           <label>Molette de la souris
             <select value={wheelMode} onChange={(e) => ui.set({ wheelMode: e.target.value as WheelMode })}>
               <option value='auto'>Auto (souris = zoom, trackpad = défilement)</option>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { awareness, getItems, net } from './board'
+import { awareness, canvasIsDark, getItems, net, useMeta } from './board'
 import { camera, ui, useStore, viewportCenterWorld, viewportSize, zoomBy } from './store'
 import {
   copySelection, deleteSelection, duplicateSelection, fitAll, frameSelection, nudge, pasteClip, redo, reorder, selectAll,
@@ -136,6 +136,8 @@ export function App () {
   const presenting = useStore(ui, (s) => s.presenting) !== null
   const framesPanel = useStore(ui, (s) => s.framesPanel)
   const loaded = useStore(net, (n) => n.loaded)
+  const m = useMeta()
+  const themeStyle = (m.canvas === 'custom' ? { '--canvas-bg': m.bg } : {}) as React.CSSProperties
 
   useEffect(() => {
     window.addEventListener('keydown', onKeyDown)
@@ -180,7 +182,7 @@ export function App () {
   }, [loaded])
 
   return (
-    <div className={`app${presenting ? ' presenting' : ''}`}>
+    <div className={`app${presenting ? ' presenting' : ''}`} data-ui={m.ui} data-canvas={canvasIsDark(m) ? 'dark' : 'light'} style={themeStyle}>
       <Canvas />
       {!presenting && (
         <>

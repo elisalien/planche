@@ -95,7 +95,7 @@ export function createTextItem (text: string, at: Point) {
   const lines = text.split('\n')
   const w = Math.min(600, Math.max(160, Math.max(...lines.map((l) => l.length)) * 9))
   const h = Math.max(40, lines.length * 26 + 16)
-  const it = placed({ id: newId(), type: 'text', text, x: at.x - w / 2, y: at.y - h / 2, w, h, z: maxZ() + 1, fontSize: 18, color: '#1f2937', align: 'left' })
+  const it = placed({ id: newId(), type: 'text', text, x: at.x - w / 2, y: at.y - h / 2, w, h, z: maxZ() + 1, fontSize: 18, align: 'left' })
   addItems([it])
   select([it.id])
 }

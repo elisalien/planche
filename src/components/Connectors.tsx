@@ -7,7 +7,7 @@ import type { Item, Items } from '../types'
 const Connector = memo(function Connector ({ it, all, selected }: { it: Item; all: Items; selected: boolean }) {
   const { a, b, na, nb } = connectorEnds(it, all)
   const g = connectorGeometry(a, b, na, nb, it.route ?? 'curved')
-  const color = it.color ?? '#334155'
+  const color = it.color ?? 'var(--canvas-ink)'
   const w = it.width ?? 2
   const editing = useStore(ui, (s) => s.editing === it.id)
   const head = 8 + w * 2.5
@@ -15,9 +15,9 @@ const Connector = memo(function Connector ({ it, all, selected }: { it: Item; al
     <g data-id={it.id} className={`connector${selected ? ' selected' : ''}`}>
       <path className='hit' d={g.d} />
       {selected && <path d={g.d} stroke='#3b82f6' strokeWidth={w + 6} strokeOpacity={0.25} fill='none' strokeLinecap='round' />}
-      <path d={g.d} stroke={color} strokeWidth={w} fill='none' strokeLinecap='round' strokeLinejoin='round' strokeDasharray={it.dash ? `${w * 4} ${w * 3}` : undefined} />
-      {it.endArrow !== false && <polygon points={arrowHead(g.b, g.angleB, head)} fill={color} />}
-      {it.startArrow && <polygon points={arrowHead(g.a, g.angleA, head)} fill={color} />}
+      <path d={g.d} style={{ stroke: color }} strokeWidth={w} fill='none' strokeLinecap='round' strokeLinejoin='round' strokeDasharray={it.dash ? `${w * 4} ${w * 3}` : undefined} />
+      {it.endArrow !== false && <polygon points={arrowHead(g.b, g.angleB, head)} style={{ fill: color }} />}
+      {it.startArrow && <polygon points={arrowHead(g.a, g.angleA, head)} style={{ fill: color }} />}
       {(it.label || editing) && (
         <foreignObject x={g.mid.x - 90} y={g.mid.y - 16} width={180} height={32} style={{ overflow: 'visible' }}>
           <div className='conn-label-wrap'>

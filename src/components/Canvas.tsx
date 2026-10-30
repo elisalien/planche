@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import {
-  addItems, adoptInto, frameAt, getItems, maxZ, meta, moveBy, newId, reparent, sendCursor,
+  addItems, adoptInto, frameAt, getItems, maxZ, moveBy, newId, reparent, sendCursor,
   undoManager, updateItem, useItems
 } from '../board'
 import { center, containsRect, intersects, itemRect, nearestSide, normRect, sidePoint, unionRects } from '../geometry'
@@ -71,7 +71,6 @@ function sideNear (it: Item, p: Point, zoom: number): Side | 'auto' {
 
 export function Canvas () {
   const items = useItems()
-  const bg = useStore(meta, (m) => m.bg)
   const vpRef = useRef<HTMLDivElement>(null)
   const worldRef = useRef<HTMLDivElement>(null)
   const drag = useRef<Drag | null>(null)
@@ -464,7 +463,7 @@ export function Canvas () {
     } else if (tool === 'sticky') {
       it = { id: newId(), type: 'sticky', x: start.x - 100, y: start.y - 100, w: 200, h: 200, z, fill: ui.get().stickyColor, text: '' }
     } else {
-      it = { id: newId(), type: 'text', x: start.x, y: start.y - 20, w: 260, h: 40, z, text: '', fontSize: 20, color: '#1f2937', align: 'left' }
+      it = { id: newId(), type: 'text', x: start.x, y: start.y - 20, w: 260, h: 40, z, text: '', fontSize: 20, align: 'left' }
     }
     if (it.type !== 'frame') it.parentId = frameAt(it)?.id ?? null
     addItems([it])
@@ -484,7 +483,7 @@ export function Canvas () {
       id: newId(), type: 'connector', x: 0, y: 0, w: 0, h: 0, z: maxZ() + 1,
       from: c.fromId ? { id: c.fromId, anchor: c.fromAnchor, x: c.from.x, y: c.from.y } : { id: null, x: c.from.x, y: c.from.y },
       to: toId ? { id: toId, anchor: sideNear(all[toId], p, zoom), x: p.x, y: p.y } : { id: null, x: p.x, y: p.y },
-      route: ui.get().defaultRoute, color: '#334155', width: 2, endArrow: true
+      route: ui.get().defaultRoute, width: 2, endArrow: true
     }
     addItems([conn])
     ui.set({ selected: [conn.id], tool: ui.get().tool === 'connector' ? 'connector' : 'select' })
@@ -513,7 +512,7 @@ export function Canvas () {
       id='viewport'
       ref={vpRef}
       className={`viewport tool-${useStore(ui, (s) => s.tool)}${useStore(ui, (s) => s.dragging) ? ' dragging' : ''}`}
-      style={{ backgroundColor: bg }}
+      style={{ backgroundColor: 'var(--canvas-bg)' }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

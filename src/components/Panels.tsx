@@ -34,7 +34,7 @@ export function FramesPanel () {
       <ol>
         {list.map((f, i) => (
           <li key={f.id} className={selected.includes(f.id) ? 'active' : ''} onClick={() => { ui.set({ selected: [f.id] }); zoomToRect(f, 60, true, 4) }}>
-            <span className='thumb' style={{ aspectRatio: `${f.w} / ${f.h}`, background: f.fill ?? '#fff', backgroundImage: PATTERNS[f.pattern ?? 'none'], backgroundSize: '6px 6px' }} />
+            <span className='thumb' style={{ aspectRatio: `${f.w} / ${f.h}`, background: f.fill ?? 'var(--frame-bg)', backgroundImage: PATTERNS[f.pattern ?? 'none'], backgroundSize: '6px 6px' }} />
             <span className='name'>{i + 1}. {f.title || 'Sans titre'}</span>
             <span className='order' onClick={(e) => e.stopPropagation()}>
               <button className='icon' title='Monter' onClick={() => move(i, -1)}><ChevronUp size={14} /></button>
