@@ -4,6 +4,9 @@ export type Anchor = Side | 'auto'
 export type FramePattern = 'none' | 'dots' | 'grid' | 'lines'
 export type ShapeKind = 'rect' | 'round' | 'ellipse' | 'diamond'
 export type Route = 'straight' | 'curved' | 'elbow'
+export type TextAlign = 'left' | 'center' | 'right' | 'justify'
+export type VAlign = 'top' | 'middle' | 'bottom'
+export type TextCase = 'none' | 'uppercase' | 'lowercase' | 'capitalize'
 
 export interface Rect { x: number; y: number; w: number; h: number }
 export interface Point { x: number; y: number }
@@ -40,8 +43,27 @@ export interface Item extends Rect {
   fill?: string
   stroke?: string
   color?: string
+
+  // character
+  fontFamily?: string
   fontSize?: number
-  align?: 'left' | 'center' | 'right'
+  fontWeight?: number
+  italic?: boolean
+  underline?: boolean
+  strike?: boolean
+  /** InDesign-style tracking, in thousandths of an em. */
+  tracking?: number
+  textCase?: TextCase
+
+  // paragraph
+  align?: TextAlign
+  vAlign?: VAlign
+  /** Line height as a multiple of the font size. */
+  lineHeight?: number
+  spaceBefore?: number
+  spaceAfter?: number
+  indent?: number
+  padding?: number
 
   // frame
   title?: string

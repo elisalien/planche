@@ -84,13 +84,17 @@ input, select { font: inherit; color: inherit; }
 
 .text { white-space: pre-wrap; word-break: break-word; outline: none; line-height: 1.3; min-height: 1em; }
 .text.editing { user-select: text; cursor: text; }
-.text.free { width: 100%; padding: 6px 4px; }
+.text.free { width: 100%; }
+.text .para { margin: var(--sb, 0) 0 var(--sa, 0); text-indent: var(--ti, 0); }
+.text .para:first-child { margin-top: 0; }
+.text .para:last-child { margin-bottom: 0; }
+.textbox { position: absolute; inset: 0; display: flex; flex-direction: column; }
 
-.sticky { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 8px;
+.sticky { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center;
   box-shadow: 0 1px 1px rgba(0,0,0,.08), 0 6px 14px -6px rgba(0,0,0,.25); overflow: hidden; }
 .sticky .text { width: 100%; max-height: 100%; }
 
-.shape { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 10px; }
+.shape { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; }
 .shape .text { width: 100%; position: relative; }
 .shape .diamond { position: absolute; inset: 0; width: 100%; height: 100%; }
 

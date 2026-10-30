@@ -3,6 +3,7 @@ import { ExternalLink, Eye, Play, RefreshCw } from 'lucide-react'
 import { updateItem, transact } from '../board'
 import { createStore, ui, useStore } from '../store'
 import { hostOf, unfurlInto } from '../media'
+import { textBoxCss, textCss, textDefaults } from '../text'
 import type { Item } from '../types'
 
 /** Which video is playing inline is per-viewer state, not shared. */
@@ -39,7 +40,7 @@ function EditableText ({ it, className, style }: { it: Item; className?: string;
     transact(() => {
       const patch: Partial<Item> = { text }
       // Free text grows with its content.
-      if (it.type === 'text') patch.h = Math.max(it.h, Math.ceil(el.scrollHeight))
+      if (it.type === 'text') patch.h = Math.max(it.h, Math.ceil(el.scrollHeight + 2 * (it.padding ?? textDefaults(it).padding)))
       updateItem(it.id, patch)
     })
     if (ui.get().editing === it.id) ui.set({ editing: null })
@@ -48,6 +49,7 @@ function EditableText ({ it, className, style }: { it: Item; className?: string;
   if (editing) {
     return (
       <div
+        key='edit'
         ref={ref}
         className={`text editing ${className ?? ''}`}
         style={style}
@@ -62,11 +64,16 @@ function EditableText ({ it, className, style }: { it: Item; className?: string;
       />
     )
   }
-  return <div className={`text ${className ?? ''}`} style={style}>{it.text}</div>
+  return (
+    // Distinct key: the browser mutates the editable node's DOM, so it must not be reused.
+    <div key='view' className={`text ${className ?? ''}`} style={style}>
+      {(it.text ?? '').split('\n').map((p, i) => <div key={i} className='para'>{p || '​'}</div>)}
+    </div>
+  )
 }
 
 /** Shrinks sticky text until it fits, like paper notes do. */
-function useFitText (ref: React.RefObject<HTMLDivElement | null>, deps: unknown[], max: number) {
+function useFitText (ref: React.RefObject<HTMLDivElement | null>, deps: unknown[], max: number, pad: number) {
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
@@ -74,7 +81,7 @@ function useFitText (ref: React.RefObject<HTMLDivElement | null>, deps: unknown[
     if (!t || t.classList.contains('editing')) return
     let size = max
     t.style.fontSize = `${size}px`
-    while (size > 8 && (t.scrollHeight > el.clientHeight - 16 || t.scrollWidth > el.clientWidth - 16)) {
+    while (size > 8 && (t.scrollHeight > el.clientHeight - pad * 2 || t.scrollWidth > el.clientWidth - pad * 2)) {
       size -= size > 20 ? 2 : 1
       t.style.fontSize = `${size}px`
     }
@@ -84,10 +91,11 @@ function useFitText (ref: React.RefObject<HTMLDivElement | null>, deps: unknown[
 
 function Sticky ({ it }: { it: Item }) {
   const ref = useRef<HTMLDivElement>(null)
-  useFitText(ref, [it.text, it.w, it.h], it.fontSize ?? Math.round(Math.min(it.w, it.h) / 6.5))
+  const pad = it.padding ?? textDefaults(it).padding
+  useFitText(ref, [it.text, it.w, it.h, it.fontFamily, it.fontWeight, it.tracking, it.lineHeight, it.padding, it.spaceBefore, it.spaceAfter, it.textCase], it.fontSize ?? Math.round(Math.min(it.w, it.h) / 6.5), pad)
   return (
-    <div ref={ref} className='sticky' style={{ background: it.fill ?? '#fde68a', textAlign: it.align ?? 'center' }}>
-      <EditableText it={it} style={{ color: it.color }} />
+    <div ref={ref} className='sticky' style={{ background: it.fill ?? '#fde68a', ...textBoxCss(it) }}>
+      <EditableText it={it} style={textCss(it)} />
     </div>
   )
 }
@@ -100,14 +108,15 @@ function Shape ({ it }: { it: Item }) {
     <div className='shape' style={{
       background: kind === 'diamond' ? 'transparent' : fill,
       border: kind === 'diamond' ? 'none' : `2px solid ${stroke}`,
-      borderRadius: kind === 'ellipse' ? '50%' : kind === 'round' ? Math.min(it.w, it.h) * 0.18 : 2
+      borderRadius: kind === 'ellipse' ? '50%' : kind === 'round' ? Math.min(it.w, it.h) * 0.18 : 2,
+      ...textBoxCss(it)
     }}>
       {kind === 'diamond' && (
         <svg className='diamond' viewBox='0 0 100 100' preserveAspectRatio='none'>
           <polygon points='50,1 99,50 50,99 1,50' fill={fill} stroke={stroke} strokeWidth={2} vectorEffect='non-scaling-stroke' />
         </svg>
       )}
-      <EditableText it={it} style={{ fontSize: it.fontSize ?? 18, color: it.color, textAlign: it.align ?? 'center' }} />
+      <EditableText it={it} style={{ fontSize: 18, ...textCss(it) }} />
     </div>
   )
 }
@@ -186,7 +195,7 @@ export const ItemView = memo(function ItemView ({ it }: { it: Item }) {
     case 'frame': body = <Frame it={it} />; break
     case 'sticky': body = <Sticky it={it} />; break
     case 'shape': body = <Shape it={it} />; break
-    case 'text': body = <EditableText it={it} className='free' style={{ fontSize: it.fontSize ?? 18, color: it.color ?? 'var(--canvas-ink)', textAlign: it.align ?? 'left' }} />; break
+    case 'text': body = <div className='textbox' style={textBoxCss(it)}><EditableText it={it} className='free' style={{ fontSize: 18, ...textCss(it, 'var(--canvas-ink)') }} /></div>; break
     case 'link': body = <LinkCard it={it} />; break
     case 'video': body = <VideoCard it={it} />; break
     case 'image': body = <img className='image' src={it.src} alt='' draggable={false} />; break

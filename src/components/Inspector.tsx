@@ -1,5 +1,5 @@
 import {
-  AlignCenter, AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical,
+  AlignCenter, AlignCenterHorizontal, AlignJustify, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical,
   AlignHorizontalDistributeCenter, AlignLeft, AlignRight, AlignStartHorizontal, AlignStartVertical,
   AlignVerticalDistributeCenter, BringToFront, Copy, Frame as FrameIcon, Grid2x2, Lock, LockOpen, Maximize, SendToBack,
   Shrink, Trash2
@@ -12,7 +12,8 @@ import {
 } from '../actions'
 import { align, distribute, matchSize, tidy } from '../align'
 import { detectVideo, unfurlInto } from '../media'
-import type { FramePattern, Item, Route, ShapeKind } from '../types'
+import { textDefaults } from '../text'
+import type { FramePattern, Item, Route, ShapeKind, TextAlign, VAlign } from '../types'
 
 const TYPE_LABEL: Record<string, string> = {
   frame: 'Cadre', sticky: 'Post-it', text: 'Texte', shape: 'Forme', link: 'Lien', video: 'Vidéo', image: 'Image', connector: 'Connecteur'
@@ -95,8 +96,12 @@ function TextSection ({ list }: { list: Item[] }) {
     <section>
       <h4>Texte</h4>
       <div className='row'>
-        <Seg value={first.align ?? (first.type === 'text' ? 'left' : 'center')} onChange={(a) => patchAll(list, { align: a })}
-          options={[{ v: 'left', label: <AlignLeft size={14} /> }, { v: 'center', label: <AlignCenter size={14} /> }, { v: 'right', label: <AlignRight size={14} /> }]} />
+        <Seg<TextAlign> value={first.align ?? textDefaults(first).align} onChange={(a) => patchAll(list, { align: a })}
+          options={[{ v: 'left', label: <AlignLeft size={14} />, title: 'Gauche' }, { v: 'center', label: <AlignCenter size={14} />, title: 'Centre' }, { v: 'right', label: <AlignRight size={14} />, title: 'Droite' }, { v: 'justify', label: <AlignJustify size={14} />, title: 'Justifié' }]} />
+        {first.type !== 'text' && (
+          <Seg<VAlign> value={first.vAlign ?? textDefaults(first).vAlign} onChange={(v) => patchAll(list, { vAlign: v })}
+            options={[{ v: 'top', label: <AlignVerticalJustifyStart size={14} />, title: 'Haut' }, { v: 'middle', label: <AlignVerticalJustifyCenter size={14} />, title: 'Milieu' }, { v: 'bottom', label: <AlignVerticalJustifyEnd size={14} />, title: 'Bas' }]} />
+        )}
         <label className='num'><span>Taille</span>
           <input type='number' min={6} max={400} placeholder='auto' value={first.fontSize ?? ''} onKeyDown={(e) => e.stopPropagation()}
             onChange={(e) => patchAll(list, { fontSize: e.target.value ? Number(e.target.value) : undefined })} />

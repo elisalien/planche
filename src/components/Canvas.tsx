@@ -489,6 +489,14 @@ export function Canvas () {
     ui.set({ selected: [conn.id], tool: ui.get().tool === 'connector' ? 'connector' : 'select' })
   }
 
+  // Triple click inside a shape or sticky puts the caret in its text, even when empty.
+  const onClick = (e: React.MouseEvent) => {
+    if (e.detail !== 3 || ui.get().tool !== 'select' || (e.target as HTMLElement).closest('[data-nodrag]')) return
+    const id = itemAtPoint(e.clientX, e.clientY)
+    const it = id ? getItems()[id] : null
+    if (it && !it.locked && (it.type === 'shape' || it.type === 'sticky')) ui.set({ editing: it.id, selected: [it.id] })
+  }
+
   const onDoubleClick = (e: React.MouseEvent) => {
     const t = e.target as HTMLElement
     if (t.closest('[data-nodrag]') || ui.get().tool !== 'select') return
@@ -498,7 +506,8 @@ export function Canvas () {
     const it = id ? getItems()[id] : null
     if (!it || it.locked) return
     switch (it.type) {
-      case 'sticky': case 'text': case 'shape': case 'connector':
+      // Shapes and stickies are edited with a triple click (see onClick).
+      case 'text': case 'connector':
         ui.set({ editing: it.id, selected: [it.id] }); break
       case 'frame': zoomToRect(it, 40, true, 4); break
       case 'link': ui.set({ preview: { url: it.url!, kind: 'link' } }); break
@@ -519,6 +528,7 @@ export function Canvas () {
       onPointerCancel={onPointerUp}
       onPointerLeave={() => sendCursor(null)}
       onDoubleClick={onDoubleClick}
+      onClick={onClick}
       onContextMenu={(e) => { if (!(e.target as HTMLElement).closest('[data-nodrag]')) e.preventDefault() }}
     >
       <div className='world' ref={worldRef}>
