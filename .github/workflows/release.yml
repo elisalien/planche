@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to (re)build, e.g. v0.1.0
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Package
+        run: |
+          mkdir -p pkg/planche
+          cp -r dist server package.json package-lock.json README.md pkg/planche/
+          cp scripts/planche.cmd scripts/planche.sh pkg/planche/
+          chmod +x pkg/planche/planche.sh
+          echo "$TAG" > pkg/planche/VERSION
+          (cd pkg && zip -qr ../planche.zip planche && tar -czf ../planche.tar.gz planche)
+          cp scripts/install.ps1 scripts/install.sh .
+          sha256sum planche.zip planche.tar.gz install.ps1 install.sh > SHA256SUMS.txt
+
+      - name: Smoke test
+        run: |
+          cd pkg/planche
+          npm ci --omit=dev --no-audit --no-fund
+          PORT=8799 node server/server.mjs &
+          SERVER=$!
+          for i in $(seq 1 20); do curl -fsS localhost:8799/api/health && break; sleep 0.5; done
+          curl -fsS localhost:8799/ | grep -q '<div id="root">'
+          kill $SERVER
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTES=$(cat <<'MD'
+          ## Installation
+
+          **Windows** (PowerShell) :
+          ```powershell
+          irm https://github.com/${{ github.repository }}/releases/latest/download/install.ps1 | iex
+          ```
+
+          **macOS / Linux** :
+          ```bash
+          curl -fsSL https://github.com/${{ github.repository }}/releases/latest/download/install.sh | sh
+          ```
+
+          Dépôt privé : utilisez `gh release download --repo ${{ github.repository }} --pattern 'install.*'`
+          puis lancez le script téléchargé (il utilise votre connexion `gh`).
+
+          Requiert Node.js 22+ (proposé automatiquement via winget sous Windows).
+          MD
+          )
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" planche.zip planche.tar.gz install.ps1 install.sh SHA256SUMS.txt --clobber
+          else
+            gh release create "$TAG" planche.zip planche.tar.gz install.ps1 install.sh SHA256SUMS.txt \
+              --title "Planche $TAG" --notes "$NOTES" --generate-notes
+          fi

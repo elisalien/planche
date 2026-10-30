@@ -62,3 +62,24 @@ mais il n'y a pas de comptes ni de droits d'accès.
 - `src/snapping.ts`, `src/align.ts`, `src/geometry.ts` : magnétisme, alignement, tracé des connecteurs.
 
 Rendu DOM + SVG (pas de canvas) pour pouvoir intégrer des iframes vidéo et du texte éditable.
+
+## Installation automatique (release)
+
+Windows (PowerShell) :
+
+```powershell
+irm https://github.com/elisalien/planche/releases/latest/download/install.ps1 | iex
+```
+
+macOS / Linux :
+
+```bash
+curl -fsSL https://github.com/elisalien/planche/releases/latest/download/install.sh | sh
+```
+
+Le script vérifie Node.js 22+ (installation proposée via winget sous Windows), télécharge la
+dernière release, installe les dépendances et crée un raccourci « Planche » (Bureau + menu
+Démarrer) ou une commande `planche`. Relancer le script met à jour sans toucher aux tableaux (`data/`).
+Si le dépôt est privé, le script passe par `gh` (connexion GitHub de l'utilisateur).
+
+Publier une version : `git tag v0.2.0 && git push --tags` — GitHub Actions construit, teste et publie la release.
