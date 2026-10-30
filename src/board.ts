@@ -150,20 +150,23 @@ export function itemsVersion () { return version }
 export type UiTheme = 'light' | 'dark'
 export type CanvasTheme = 'light' | 'dark' | 'custom'
 export interface BoardRef { id: string; name: string }
-export interface BoardMeta { name: string; bg: string; ui: UiTheme; canvas: CanvasTheme; parent: BoardRef | null }
+export interface BoardMeta { name: string; bg: string; ui: UiTheme; canvas: CanvasTheme; parent: BoardRef | null; ancestors: BoardRef[] }
 
 export const DEFAULT_BG = '#f4f4f2'
-export const meta = createStore<BoardMeta>({ name: 'Tableau sans titre', bg: DEFAULT_BG, ui: 'light', canvas: 'light', parent: null })
+export const meta = createStore<BoardMeta>({ name: 'Tableau sans titre', bg: DEFAULT_BG, ui: 'light', canvas: 'light', parent: null, ancestors: [] })
 metaMap.observe(() => {
   const bg = (metaMap.get('bg') as string) || DEFAULT_BG
   // Boards created before themes only stored a background colour.
   const canvas = (metaMap.get('canvas') as CanvasTheme) || (bg !== DEFAULT_BG ? 'custom' : 'light')
+  const parent = (metaMap.get('parent') as BoardRef) || null
   meta.set({
     name: (metaMap.get('name') as string) || 'Tableau sans titre',
     bg,
     ui: (metaMap.get('ui') as UiTheme) || 'light',
     canvas,
-    parent: (metaMap.get('parent') as BoardRef) || null
+    parent,
+    // Older sub-boards only know their direct parent.
+    ancestors: (metaMap.get('ancestors') as BoardRef[]) || (parent ? [parent] : [])
   })
   rememberBoard()
 })
@@ -215,16 +218,80 @@ export function sendCursor (p: { x: number; y: number } | null) {
 
 // ---------------------------------------------------------------- recent boards
 
-export interface BoardEntry { id: string; name: string; updated: number }
-export function recentBoards (): BoardEntry[] {
-  try { return JSON.parse(localStorage.getItem('planche:boards') || '[]') } catch { return [] }
+// Local index of known boards (visited, or seen as sub-board cards). It lives
+// only in this browser: the server never lists boards, so links stay private.
+
+export interface BoardEntry {
+  id: string
+  name: string
+  /** Last visit (0 = known but never opened here). */
+  updated: number
+  parent?: string | null
+  fav?: boolean
 }
+
+const INDEX_KEY = 'planche:boards'
+const indexStore = createStore<{ list: BoardEntry[] }>({ list: readIndex() })
+
+function readIndex (): BoardEntry[] {
+  try { return JSON.parse(localStorage.getItem(INDEX_KEY) || '[]') } catch { return [] }
+}
+
+function writeIndex (list: BoardEntry[]) {
+  // Keep favourites and the most recently visited boards.
+  const kept = [...list].sort((a, b) => Number(!!b.fav) - Number(!!a.fav) || b.updated - a.updated).slice(0, 300)
+  try { localStorage.setItem(INDEX_KEY, JSON.stringify(kept)) } catch { /* storage unavailable */ }
+  indexStore.set({ list: kept })
+}
+
+function upsert (list: BoardEntry[], e: Partial<BoardEntry> & { id: string }) {
+  const i = list.findIndex((b) => b.id === e.id)
+  if (i < 0) list.push({ name: 'Sans titre', updated: 0, ...e })
+  else list[i] = { ...list[i], ...Object.fromEntries(Object.entries(e).filter(([, v]) => v !== undefined)) }
+}
+
+export function useBoardIndex () { return useStore(indexStore, (s) => s.list) }
+export function boardIndex () { return indexStore.get().list }
+
+/** Boards visited in this browser, most recent first. */
+export function recentBoards (): BoardEntry[] {
+  return boardIndex().filter((b) => b.updated > 0).sort((a, b) => b.updated - a.updated)
+}
+
+export function toggleFavorite (id: string) {
+  const list = [...boardIndex()]
+  const cur = list.find((b) => b.id === id)
+  upsert(list, { id, fav: !cur?.fav, name: cur?.name ?? (id === boardId ? meta.get().name : 'Sans titre') })
+  writeIndex(list)
+}
+
 function rememberBoard () {
-  const list = recentBoards().filter((b) => b.id !== boardId)
-  list.unshift({ id: boardId, name: meta.get().name, updated: Date.now() })
-  localStorage.setItem('planche:boards', JSON.stringify(list.slice(0, 50)))
+  const list = [...boardIndex()]
+  const m = meta.get()
+  upsert(list, { id: boardId, name: m.name, updated: Date.now(), parent: m.parent?.id ?? null })
+  for (const a of m.ancestors) upsert(list, { id: a.id, name: a.name })
+  writeIndex(list)
 }
 rememberBoard()
+
+/** Sub-board cards on this board become known children in the index. */
+let childTimer = 0
+function registerChildren () {
+  clearTimeout(childTimer)
+  childTimer = window.setTimeout(() => {
+    const list = [...boardIndex()]
+    let changed = false
+    for (const it of Object.values(snapshot)) {
+      if (it.type !== 'board' || !it.boardRef) continue
+      const cur = list.find((b) => b.id === it.boardRef)
+      if (cur && cur.name === it.title && cur.parent === boardId) continue
+      upsert(list, { id: it.boardRef, name: it.title || 'Sans titre', parent: boardId })
+      changed = true
+    }
+    if (changed) writeIndex(list)
+  }, 800)
+}
+listeners.add(registerChildren)
 
 // ---------------------------------------------------------------- mutations
 

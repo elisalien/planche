@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import {
   ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Grid3x3, LayoutGrid, Magnet, Maximize, Minus, Plus, X
 } from 'lucide-react'
-import { ancestorsOf, frameTree, meta, updateItems, useItems } from '../board'
+import { frameTree, updateItems, useItems } from '../board'
 import { camera, ui, useStore, zoomBy, zoomToRect, animateCamera, viewportSize } from '../store'
-import { addFrameFromPreset, enterFocus, exitFocus, fitAll } from '../actions'
+import { addFrameFromPreset, enterFocus, fitAll } from '../actions'
 import { PATTERNS } from './ItemView'
 import type { Item } from '../types'
 
@@ -138,27 +138,6 @@ export function Presenter () {
       <span>{idx + 1} / {list.length} — {f?.title}</span>
       <button className='tool' onClick={() => ui.set({ presenting: Math.min(list.length - 1, idx + 1) })}><ChevronRight size={18} /></button>
       <button className='tool' title='Quitter (Échap)' onClick={() => ui.set({ presenting: null })}><X size={18} /></button>
-    </div>
-  )
-}
-
-/** Path of the entered frame; click a level to go back up. */
-export function FocusBar () {
-  const focus = useStore(ui, (s) => s.focus)
-  const items = useItems()
-  const name = useStore(meta, (m) => m.name)
-  const f = focus ? items[focus] : null
-  useEffect(() => { if (focus && !f) ui.set({ focus: null }) }, [focus, f])
-  if (!f) return null
-  const path = [...ancestorsOf(f.id)].reverse()
-  return (
-    <div className='focus-bar panel'>
-      <button className='crumb' onClick={() => { ui.set({ focus: null }); zoomToRect(f, 160, true, 1) }}>{name}</button>
-      {path.map((p) => (
-        <span key={p.id}>› <button className='crumb' onClick={() => enterFocus(p.id)}>{p.title || 'Sans titre'}</button></span>
-      ))}
-      <span>› <span className='crumb current'>{f.title || 'Sans titre'}</span></span>
-      <button className='tool' title='Sortir du cadre (Échap)' onClick={exitFocus}><X size={16} /></button>
     </div>
   )
 }

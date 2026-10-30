@@ -137,6 +137,7 @@ export interface UiState {
   stickyColor: string
   /** Frame the user has entered (double click); everything else is dimmed. */
   focus: string | null
+  switcher: boolean
   toast: string | null
 }
 
@@ -163,6 +164,7 @@ export const ui = createStore<UiState>({
   shapeKind: saved.shapeKind ?? 'rect',
   stickyColor: saved.stickyColor ?? '#fde68a',
   focus: null,
+  switcher: false,
   toast: null
 })
 

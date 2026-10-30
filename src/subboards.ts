@@ -42,6 +42,7 @@ function childMeta (m: Y.Map<unknown>, name: string) {
   const cur = meta.get()
   m.set('name', name)
   m.set('parent', { id: boardId, name: cur.name })
+  m.set('ancestors', [...cur.ancestors, { id: boardId, name: cur.name }])
   // A sub-board starts with its parent's look.
   m.set('ui', cur.ui)
   m.set('canvas', cur.canvas)

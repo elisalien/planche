@@ -382,3 +382,47 @@ kbd { background: var(--hover); border: 1px solid var(--line); border-bottom-wid
 .viewport.tool-board { cursor: copy; }
 .parent-link { color: var(--muted); text-decoration: none; padding: 4px 8px; border-radius: 6px; white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
 .parent-link:hover { background: var(--hover); color: var(--ink); }
+
+/* breadcrumb */
+.breadcrumb { display: flex; align-items: center; min-width: 0; max-width: calc(100vw - 560px); overflow: hidden; }
+.crumb-step { display: inline-flex; align-items: center; min-width: 0; }
+.crumb-step .sep { color: var(--muted); padding: 0 2px; }
+.crumb-wrap { position: relative; display: inline-flex; align-items: center; }
+.crumb { border: 0; background: none; padding: 4px 6px; border-radius: 6px; color: var(--muted); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crumb:empty { display: none; }
+.crumb:hover { background: var(--hover); color: var(--ink); }
+.crumb.current { color: var(--ink); font-weight: 600; }
+.crumb-more { border: 0; background: none; width: 20px; height: 26px; border-radius: 6px; display: grid; place-items: center; color: var(--muted); }
+.crumb-more:hover { background: var(--hover); color: var(--ink); }
+.crumb-fav { border: 0; background: none; width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; color: var(--muted); }
+.crumb-fav:hover { background: var(--hover); }
+.crumb-fav.on { color: #f59e0b; }
+.crumb-exit { border: 0; background: var(--hover); width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; margin-left: 6px; color: var(--ink); }
+.breadcrumb .board-name { width: auto; max-width: 260px; }
+.crumb-menu { position: fixed; min-width: 220px; max-height: 360px; overflow: auto; padding: 6px; z-index: 50; }
+.crumb-menu button { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: none; padding: 7px 8px; border-radius: 6px; text-align: left; white-space: nowrap; }
+.crumb-menu button span { overflow: hidden; text-overflow: ellipsis; }
+.crumb-menu button:hover { background: var(--hover); }
+.crumb-menu button.active { background: var(--accent-soft); color: var(--accent); }
+.crumb-group { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 8px 8px 4px; }
+.crumb-empty { color: var(--muted); padding: 10px; font-size: 12px; }
+
+/* quick switcher */
+.switcher-backdrop { align-items: start; padding-top: 12vh; }
+.switcher { position: relative; width: min(560px, 92vw); max-height: 64vh; display: flex; flex-direction: column; overflow: hidden; }
+.switcher-input { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); color: var(--muted); }
+.switcher-input input { flex: 1; border: 0; outline: none; background: none; font-size: 15px; color: var(--ink); }
+.switcher-list { overflow: auto; padding: 6px; }
+.switcher-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.switcher-row .label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre; }
+.switcher-row small { color: var(--muted); white-space: nowrap; }
+.switcher-row.active { background: var(--accent-soft); }
+.switcher-row svg { flex: 0 0 auto; color: var(--muted); }
+.crumb-step, .crumb-wrap { flex-shrink: 1; }
+.crumb { min-width: 24px; flex-shrink: 1; }
+.breadcrumb .board-name { min-width: 64px; flex-shrink: 1; }
+.crumb-more, .crumb-fav, .crumb-exit, .crumb-step .sep { flex-shrink: 0; }
+@media (max-width: 1100px) {
+  .status { font-size: 0; gap: 0; }
+  .breadcrumb { max-width: calc(100vw - 470px); }
+}

@@ -14,7 +14,8 @@ import { Canvas, isTyping, pointer } from './components/Canvas'
 import { Toolbar } from './components/Toolbar'
 import { TopBar } from './components/TopBar'
 import { Inspector } from './components/Inspector'
-import { FocusBar, FramesPanel, PreviewModal, Presenter, Toast, ZoomBar } from './components/Panels'
+import { FramesPanel, PreviewModal, Presenter, Toast, ZoomBar } from './components/Panels'
+import { Switcher } from './components/Switcher'
 import type { Tool } from './store'
 
 const TOOL_KEYS: Record<string, Tool> = { v: 'select', h: 'hand', f: 'frame', n: 'sticky', t: 'text', r: 'shape', o: 'shape', l: 'connector', c: 'connector', b: 'board' }
@@ -29,6 +30,7 @@ function onKeyDown (e: KeyboardEvent) {
   if (mod && k === 'y') { e.preventDefault(); redo(); return }
   if (mod && k === 'd') { e.preventDefault(); duplicateSelection(); return }
   if (mod && k === 'a') { e.preventDefault(); selectAll(); return }
+  if (mod && k === 'k') { e.preventDefault(); ui.set({ switcher: true }); return }
   if (mod && (k === '=' || k === '+')) { e.preventDefault(); zoomBy(1.25); return }
   if (mod && k === '-') { e.preventDefault(); zoomBy(1 / 1.25); return }
   if (mod && k === '0') {
@@ -207,7 +209,7 @@ export function App () {
           <Toolbar />
           {framesPanel && <FramesPanel />}
           <Inspector />
-          <FocusBar />
+          <Switcher />
           <ZoomBar />
           <Help />
         </>

@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
-import { Download, FilePlus2, FolderOpen, Menu, Moon, PanelLeft, Presentation, Settings, Share2, Sun, Upload } from 'lucide-react'
+import { Download, FilePlus2, FolderOpen, Menu, Moon, Search, PanelLeft, Presentation, Settings, Share2, Sun, Upload } from 'lucide-react'
 import { boardId, exportBoard, frames, importBoard, me, net, newId, recentBoards, setMe, setMeta, useMeta, usePeers } from '../board'
 import { toast, ui, useStore, type WheelMode } from '../store'
+import { Breadcrumb } from './Breadcrumb'
 
 export function TopBar () {
   const m = useMeta()
@@ -29,9 +30,9 @@ export function TopBar () {
   return (
     <>
       <div className='topbar left panel'>
+        <button className='tool' title='Accès rapide (Ctrl+K)' onClick={() => ui.set({ switcher: true })}><Search size={18} /></button>
         <button className='tool' title='Menu' onClick={() => setMenu(menu === 'main' ? null : 'main')}><Menu size={18} /></button>
-        {m.parent && <a className='parent-link' href={`#/b/${m.parent.id}`} title='Remonter au board parent'>‹ {m.parent.name}</a>}
-        <input className='board-name' value={m.name} onChange={(e) => setMeta('name', e.target.value)} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} />
+        <Breadcrumb />
         <button className='tool' title='Cadres' onClick={() => ui.set({ framesPanel: !ui.get().framesPanel })}><PanelLeft size={18} /></button>
       </div>
 

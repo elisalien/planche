@@ -1,7 +1,7 @@
 {
   "name": "planche",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Tableau blanc infini local, collaboratif et auto-hébergeable (frames, connecteurs, aperçus de liens, snapping).",
   "scripts": {
