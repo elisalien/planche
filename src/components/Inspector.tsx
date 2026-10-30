@@ -1,10 +1,10 @@
 import {
-  AlignCenter, AlignCenterHorizontal, AlignJustify, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical,
-  AlignHorizontalDistributeCenter, AlignLeft, AlignRight, AlignStartHorizontal, AlignStartVertical,
+  AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical,
+  AlignHorizontalDistributeCenter, AlignStartHorizontal, AlignStartVertical,
   AlignVerticalDistributeCenter, BringToFront, Copy, Frame as FrameIcon, Grid2x2, Lock, LockOpen, Maximize, SendToBack,
   Shrink, Trash2
 } from 'lucide-react'
-import { getItems, transact, updateItem, updateItems, useItems } from '../board'
+import { getItems, transact, updateItem, useItems } from '../board'
 import { ui, useStore, zoomToRect } from '../store'
 import {
   FILL_COLORS, FRAME_PRESETS, INK_COLORS, STICKY_COLORS, deleteSelection, duplicateSelection, fitFrameToContent,
@@ -12,36 +12,12 @@ import {
 } from '../actions'
 import { align, distribute, matchSize, tidy } from '../align'
 import { detectVideo, unfurlInto } from '../media'
-import { textDefaults } from '../text'
-import type { FramePattern, Item, Route, ShapeKind, TextAlign, VAlign } from '../types'
+import { Seg, Swatches, patchAll } from './controls'
+import { TypographyPanel } from './Typography'
+import type { FramePattern, Item, Route, ShapeKind } from '../types'
 
 const TYPE_LABEL: Record<string, string> = {
   frame: 'Cadre', sticky: 'Post-it', text: 'Texte', shape: 'Forme', link: 'Lien', video: 'Vidéo', image: 'Image', connector: 'Connecteur'
-}
-
-function patchAll (list: Item[], patch: Partial<Item>) {
-  updateItems(Object.fromEntries(list.map((i) => [i.id, patch])))
-}
-
-function Swatches ({ colors, value, onPick }: { colors: string[]; value?: string; onPick: (c: string) => void }) {
-  return (
-    <div className='swatches'>
-      {colors.map((c) => (
-        <button key={c} className={`swatch${value === c ? ' active' : ''}${c === 'transparent' ? ' clear' : ''}`} style={{ background: c }} onClick={() => onPick(c)} title={c} />
-      ))}
-      <label className='swatch custom' title='Couleur personnalisée'>
-        <input type='color' value={value && value.startsWith('#') ? value : '#ffffff'} onChange={(e) => onPick(e.target.value)} />
-      </label>
-    </div>
-  )
-}
-
-function Seg<T extends string> ({ value, options, onChange }: { value: T | undefined; options: { v: T; label: React.ReactNode; title?: string }[]; onChange: (v: T) => void }) {
-  return (
-    <div className='seg'>
-      {options.map((o) => <button key={o.v} title={o.title} className={value === o.v ? 'active' : ''} onClick={() => onChange(o.v)}>{o.label}</button>)}
-    </div>
-  )
 }
 
 function Num ({ value, onChange, label }: { value: number; onChange: (v: number) => void; label: string }) {
@@ -86,29 +62,6 @@ function FrameSection ({ f }: { f: Item }) {
         <button className='btn' onClick={() => zoomToRect(f, 40, true, 4)}><Maximize size={14} /> Zoomer</button>
         <button className='btn' onClick={() => fitFrameToContent(f.id)}><Shrink size={14} /> Ajuster au contenu</button>
       </div>
-    </section>
-  )
-}
-
-function TextSection ({ list }: { list: Item[] }) {
-  const first = list[0]
-  return (
-    <section>
-      <h4>Texte</h4>
-      <div className='row'>
-        <Seg<TextAlign> value={first.align ?? textDefaults(first).align} onChange={(a) => patchAll(list, { align: a })}
-          options={[{ v: 'left', label: <AlignLeft size={14} />, title: 'Gauche' }, { v: 'center', label: <AlignCenter size={14} />, title: 'Centre' }, { v: 'right', label: <AlignRight size={14} />, title: 'Droite' }, { v: 'justify', label: <AlignJustify size={14} />, title: 'Justifié' }]} />
-        {first.type !== 'text' && (
-          <Seg<VAlign> value={first.vAlign ?? textDefaults(first).vAlign} onChange={(v) => patchAll(list, { vAlign: v })}
-            options={[{ v: 'top', label: <AlignVerticalJustifyStart size={14} />, title: 'Haut' }, { v: 'middle', label: <AlignVerticalJustifyCenter size={14} />, title: 'Milieu' }, { v: 'bottom', label: <AlignVerticalJustifyEnd size={14} />, title: 'Bas' }]} />
-        )}
-        <label className='num'><span>Taille</span>
-          <input type='number' min={6} max={400} placeholder='auto' value={first.fontSize ?? ''} onKeyDown={(e) => e.stopPropagation()}
-            onChange={(e) => patchAll(list, { fontSize: e.target.value ? Number(e.target.value) : undefined })} />
-        </label>
-      </div>
-      <div className='label'>Couleur du texte</div>
-      <Swatches colors={INK_COLORS} value={first.color} onPick={(c) => patchAll(list, { color: c })} />
     </section>
   )
 }
@@ -225,7 +178,7 @@ export function Inspector () {
           <Swatches colors={INK_COLORS} value={shapes[0].stroke} onPick={(stroke) => patchAll(shapes, { stroke })} />
         </section>
       )}
-      {textual.length > 0 && <TextSection list={textual} />}
+      {textual.length > 0 && <TypographyPanel list={textual} />}
       {connectors.length > 0 && <ConnectorSection list={connectors} />}
       {one && (one.type === 'link' || one.type === 'video') && <LinkSection it={one} />}
       {one && one.type !== 'connector' && one.type !== 'frame' && (

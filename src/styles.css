@@ -282,6 +282,30 @@ input.conn-label { width: 160px; font: inherit; outline: 2px solid var(--accent)
 .settings input:not([type=color]), .settings select { border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; color: var(--ink); background: var(--field); }
 .settings input[type=color] { width: 48px; height: 28px; border: 0; padding: 0; background: none; }
 
+.typo .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin: -4px 0 4px; }
+.typo .tabs button { flex: 1; border: 0; background: none; padding: 6px 4px 8px; font-weight: 600; font-size: 12px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.typo .tabs button.active { color: var(--ink); border-bottom-color: var(--accent); }
+.typo .grow { flex: 1; min-width: 0; }
+.typo .num input { width: 56px; }
+.typo .num small { color: var(--muted); font-size: 11px; }
+.typo .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.typo .grid2 .num { justify-content: space-between; }
+.toggles { display: flex; background: var(--hover); border-radius: 8px; padding: 2px; }
+.toggles button { width: 28px; height: 26px; border: 0; background: none; border-radius: 6px; display: grid; place-items: center; }
+.toggles button.active { background: var(--field); color: var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+.toggles button.mixed { opacity: .6; }
+.font-picker { position: relative; }
+.font-current { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 6px; height: 32px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--field); font-size: 14px; }
+.font-current span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.font-menu { position: absolute; left: 0; right: 0; top: 36px; max-height: 320px; overflow: auto; background: var(--panel); border-radius: 10px;
+  box-shadow: var(--shadow); border: 1px solid var(--line); padding: 6px; z-index: 40; display: flex; flex-direction: column; }
+.font-menu input { margin-bottom: 4px; }
+.font-menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 6px 8px; border-radius: 6px; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.font-menu button:hover { background: var(--hover); }
+.font-menu button.active { background: var(--accent-soft); color: var(--accent); }
+.font-group { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 8px 8px 4px; }
+
 .settings-group { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
 .settings-group .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink); }
 .settings-group .seg button { display: inline-flex; gap: 4px; align-items: center; color: var(--ink); }

@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { fontStack } from './fonts'
 import type { Item, TextAlign, VAlign } from './types'
 
 /** Item types whose text is edited and styled through the shared text engine. */
@@ -21,7 +22,7 @@ export function textCss (it: Item, fallbackColor?: string): CSSProperties {
   const deco = [it.underline && 'underline', it.strike && 'line-through'].filter(Boolean).join(' ')
   // Unset keys are dropped so callers can spread this over their own defaults.
   return compact({
-    fontFamily: it.fontFamily,
+    fontFamily: fontStack(it.fontFamily),
     fontSize: it.fontSize,
     fontWeight: it.fontWeight,
     fontStyle: it.italic ? 'italic' : undefined,
