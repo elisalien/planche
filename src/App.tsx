@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { awareness, canvasIsDark, getItems, net, subscribeItems, useMeta } from './board'
 import { ensureFont } from './fonts'
+import { getStyles, subscribeStyles } from './textStyles'
 import { camera, ui, useStore, viewportCenterWorld, viewportSize, zoomBy } from './store'
 import {
   copySelection, deleteSelection, duplicateSelection, fitAll, frameSelection, nudge, pasteClip, redo, reorder, selectAll,
@@ -178,9 +179,13 @@ export function App () {
 
   // Load the web fonts used on the board (also when collaborators apply new ones).
   useEffect(() => {
-    const load = () => { for (const it of Object.values(getItems())) ensureFont(it.fontFamily) }
+    const load = () => {
+      for (const it of Object.values(getItems())) ensureFont(it.fontFamily)
+      for (const st of Object.values(getStyles())) ensureFont(st.props.fontFamily)
+    }
     load()
-    return subscribeItems(load)
+    const u1 = subscribeItems(load); const u2 = subscribeStyles(load)
+    return () => { u1(); u2() }
   }, [])
 
   // Initial view: fit existing content, or center the origin.

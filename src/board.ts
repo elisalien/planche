@@ -4,7 +4,7 @@ import { WebsocketProvider } from 'y-websocket'
 import { Awareness } from 'y-protocols/awareness'
 import { useSyncExternalStore } from 'react'
 import { createStore, useStore } from './store'
-import type { Item, Items } from './types'
+import type { Item, Items, TextStyle } from './types'
 import { contains, center, itemsBounds } from './geometry'
 
 // ---------------------------------------------------------------- identity
@@ -34,9 +34,13 @@ const COLORS = ['#e11d48', '#ea580c', '#ca8a04', '#16a34a', '#0891b2', '#2563eb'
 function loadUser () {
   try {
     const u = JSON.parse(localStorage.getItem('planche:user') || 'null')
-    if (u?.name) return u as { name: string; color: string }
+    // A stable id identifies the owner of personal styles.
+    if (u?.name) {
+      if (!u.id) { u.id = newId(12); localStorage.setItem('planche:user', JSON.stringify(u)) }
+      return u as { id: string; name: string; color: string }
+    }
   } catch { /* ignore */ }
-  const u = { name: `Invité ${Math.floor(Math.random() * 900 + 100)}`, color: COLORS[Math.floor(Math.random() * COLORS.length)] }
+  const u = { id: newId(12), name: `Invité ${Math.floor(Math.random() * 900 + 100)}`, color: COLORS[Math.floor(Math.random() * COLORS.length)] }
   localStorage.setItem('planche:user', JSON.stringify(u))
   return u
 }
@@ -47,7 +51,8 @@ export let me = loadUser()
 export const doc = new Y.Doc()
 export const itemsMap = doc.getMap<Item>('items')
 export const metaMap = doc.getMap<unknown>('meta')
-export const undoManager = new Y.UndoManager([itemsMap, metaMap], { captureTimeout: 400 })
+export const stylesMap = doc.getMap<TextStyle>('styles')
+export const undoManager = new Y.UndoManager([itemsMap, metaMap, stylesMap], { captureTimeout: 400 })
 
 export const awareness = new Awareness(doc)
 awareness.setLocalStateField('user', me)
@@ -306,7 +311,7 @@ export function selectionBounds (ids: string[]) {
 // ---------------------------------------------------------------- import / export
 
 export function exportBoard () {
-  return JSON.stringify({ format: 'planche', version: 1, name: meta.get().name, bg: meta.get().bg, ui: meta.get().ui, canvas: meta.get().canvas, items: Object.values(snapshot) }, null, 2)
+  return JSON.stringify({ format: 'planche', version: 1, name: meta.get().name, bg: meta.get().bg, ui: meta.get().ui, canvas: meta.get().canvas, styles: [...stylesMap.values()], items: Object.values(snapshot) }, null, 2)
 }
 
 export function importBoard (json: string, replace: boolean) {
@@ -320,6 +325,8 @@ export function importBoard (json: string, replace: boolean) {
       if (data.ui) metaMap.set('ui', data.ui)
       if (data.canvas) metaMap.set('canvas', data.canvas)
     }
+    if (replace) stylesMap.clear()
+    for (const st of (data.styles ?? []) as TextStyle[]) stylesMap.set(st.id, st)
     for (const it of data.items as Item[]) itemsMap.set(it.id, it)
   })
 }

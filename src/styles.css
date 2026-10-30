@@ -337,3 +337,21 @@ kbd { background: var(--hover); border: 1px solid var(--line); border-bottom-wid
   .board-name { width: 120px; }
   .status { display: none; }
 }
+
+.styles-list { display: flex; flex-direction: column; gap: 4px; padding-bottom: 6px; border-bottom: 1px solid var(--hover); }
+.styles-head { display: flex; align-items: center; justify-content: space-between; }
+.styles-list ul { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; }
+.styles-list li { display: flex; align-items: center; gap: 6px; padding: 5px 6px; border-radius: 6px; cursor: pointer; }
+.styles-list li:hover { background: var(--hover); }
+.styles-list li.active { background: var(--accent-soft); }
+.style-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.style-name.muted { color: var(--muted); font-size: 12px; }
+.style-name .plus { color: var(--accent); margin-left: 4px; }
+.styles-list .badge { font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+.style-actions { display: none; gap: 1px; }
+.styles-list li:hover .style-actions { display: flex; }
+.style-actions button { width: 22px; height: 22px; border: 0; background: none; border-radius: 5px; display: grid; place-items: center; color: var(--muted); }
+.style-actions button:hover { background: var(--field); color: var(--accent); }
+.style-actions button.danger:hover { color: #dc2626; }
+.style-form { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 8px; background: var(--hover); }
+.style-form input:not([type]) { border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; background: var(--field); }

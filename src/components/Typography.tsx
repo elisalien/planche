@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd,
-  AlignVerticalJustifyStart, Bold, ChevronDown, Italic, Strikethrough, Underline
+  AlignVerticalJustifyStart, Bold, ChevronDown, Copy, Italic, Pencil, Plus, RefreshCw, Strikethrough, Trash2, Underline,
+  User, Users
 } from 'lucide-react'
 import { GOOGLE_FONTS, SYSTEM_FONTS, ensureFont, fontStack, loadPickerPreviews, type FontDef } from '../fonts'
 import { textDefaults } from '../text'
+import { me } from '../board'
+import {
+  applyStyle, clearOverrides, createStyle, deleteStyle, duplicateStyle, hasOverrides, redefineStyle, resolve, updateStyle,
+  useStyles, visibleStyles
+} from '../textStyles'
 import { INK_COLORS } from '../actions'
 import { Seg, Swatches, patchAll } from './controls'
 import type { Item, TextAlign, TextCase, VAlign } from '../types'
@@ -178,7 +184,64 @@ function ParagraphTab ({ list }: { list: Item[] }) {
 }
 
 /** InDesign-style Character / Paragraph panel for every text-bearing item. */
+function StylesList ({ list }: { list: Item[] }) {
+  const styles = visibleStyles(useStyles())
+  const ids = list.map((i) => i.id)
+  const linked = common(list, 'styleId')
+  const overridden = list.some(hasOverrides)
+  const [creating, setCreating] = useState(false)
+  const [name, setName] = useState('')
+  const [personal, setPersonal] = useState(false)
+
+  const create = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name.trim()) return
+    createStyle(name.trim(), list[0], personal, ids)
+    setCreating(false); setName(''); setPersonal(false)
+  }
+
+  return (
+    <div className='styles-list'>
+      <div className='styles-head'>
+        <span className='label'>Styles</span>
+        <button className='icon' title='Nouveau style depuis la sélection' onClick={() => setCreating(!creating)}><Plus size={15} /></button>
+      </div>
+      {creating && (
+        <form className='style-form' onSubmit={create}>
+          <input autoFocus placeholder='Nom du style (ex. Titre 1)' value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Escape') setCreating(false) }} />
+          <label className='check'><input type='checkbox' checked={personal} onChange={(e) => setPersonal(e.target.checked)} /> Personnel (visible seulement par moi)</label>
+          <button className='btn primary' type='submit'>Créer depuis la sélection</button>
+        </form>
+      )}
+      <ul>
+        <li className={!linked ? 'active' : ''} onClick={() => applyStyle(ids, null)} title='Délier : le texte garde son apparence actuelle'>
+          <span className='style-name muted'>[Aucun style]</span>
+        </li>
+        {styles.map((st) => (
+          <li key={st.id} className={linked === st.id ? 'active' : ''} onClick={() => applyStyle(ids, st.id)} title='Appliquer ce style à la sélection'>
+            <span className='style-name' style={{ fontFamily: fontStack(st.props.fontFamily), fontWeight: st.props.fontWeight, fontStyle: st.props.italic ? 'italic' : undefined }}>
+              {st.name}{linked === st.id && overridden && <b className='plus' title='Remplacements locaux'>+</b>}
+            </span>
+            {st.owner && <span className='badge' title='Style personnel'>perso</span>}
+            <span className='style-actions' onClick={(e) => e.stopPropagation()}>
+              <button title='Redéfinir le style depuis la sélection' onClick={() => redefineStyle(st.id, list[0])}><RefreshCw size={13} /></button>
+              <button title='Renommer' onClick={() => { const n = prompt('Nom du style', st.name)?.trim(); if (n) updateStyle(st.id, { name: n }) }}><Pencil size={13} /></button>
+              <button title={st.owner ? 'Partager avec le tableau' : 'Rendre personnel'} onClick={() => updateStyle(st.id, { owner: st.owner ? null : me.id })}>{st.owner ? <Users size={13} /> : <User size={13} />}</button>
+              <button title='Dupliquer' onClick={() => duplicateStyle(st.id)}><Copy size={13} /></button>
+              <button title='Supprimer (les textes gardent leur apparence)' className='danger' onClick={() => { if (confirm(`Supprimer le style « ${st.name} » ?`)) deleteStyle(st.id) }}><Trash2 size={13} /></button>
+            </span>
+          </li>
+        ))}
+      </ul>
+      {overridden && <button className='btn wide' onClick={() => clearOverrides(ids)}>Effacer les remplacements</button>}
+    </div>
+  )
+}
+
 export function TypographyPanel ({ list }: { list: Item[] }) {
+  useStyles()
+  // Controls show the effective look (style + local overrides); edits become overrides.
+  const resolved = list.map(resolve)
   const [tab, setTab] = useState<'char' | 'para'>(() => (localStorage.getItem('planche:typoTab') as 'char' | 'para') || 'char')
   useEffect(() => { try { localStorage.setItem('planche:typoTab', tab) } catch { /* storage unavailable */ } }, [tab])
   return (
@@ -187,7 +250,8 @@ export function TypographyPanel ({ list }: { list: Item[] }) {
         <button className={tab === 'char' ? 'active' : ''} onClick={() => setTab('char')}>Caractère</button>
         <button className={tab === 'para' ? 'active' : ''} onClick={() => setTab('para')}>Paragraphe</button>
       </div>
-      {tab === 'char' ? <CharacterTab list={list} /> : <ParagraphTab list={list} />}
+      <StylesList list={list} />
+      {tab === 'char' ? <CharacterTab list={resolved} /> : <ParagraphTab list={resolved} />}
     </section>
   )
 }

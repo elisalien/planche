@@ -64,6 +64,8 @@ export interface Item extends Rect {
   spaceAfter?: number
   indent?: number
   padding?: number
+  /** Linked text style; the item's own text properties override it. */
+  styleId?: string | null
 
   // frame
   title?: string
@@ -95,3 +97,13 @@ export interface Item extends Rect {
 }
 
 export type Items = Record<string, Item>
+
+/** Named, linked character + paragraph style (InDesign-like). */
+export interface TextStyle {
+  id: string
+  name: string
+  props: Partial<Item>
+  /** Set for personal styles: only listed for this user, but rendered for everyone. */
+  owner?: string | null
+  order: number
+}

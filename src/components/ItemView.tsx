@@ -4,6 +4,7 @@ import { updateItem, transact } from '../board'
 import { createStore, ui, useStore } from '../store'
 import { hostOf, unfurlInto } from '../media'
 import { textBoxCss, textCss, textDefaults } from '../text'
+import { useResolved } from '../textStyles'
 import type { Item } from '../types'
 
 /** Which video is playing inline is per-viewer state, not shared. */
@@ -89,7 +90,8 @@ function useFitText (ref: React.RefObject<HTMLDivElement | null>, deps: unknown[
   }, deps)
 }
 
-function Sticky ({ it }: { it: Item }) {
+function Sticky ({ it: raw }: { it: Item }) {
+  const it = useResolved(raw)
   const ref = useRef<HTMLDivElement>(null)
   const pad = it.padding ?? textDefaults(it).padding
   useFitText(ref, [it.text, it.w, it.h, it.fontFamily, it.fontWeight, it.tracking, it.lineHeight, it.padding, it.spaceBefore, it.spaceAfter, it.textCase], it.fontSize ?? Math.round(Math.min(it.w, it.h) / 6.5), pad)
@@ -100,7 +102,8 @@ function Sticky ({ it }: { it: Item }) {
   )
 }
 
-function Shape ({ it }: { it: Item }) {
+function Shape ({ it: raw }: { it: Item }) {
+  const it = useResolved(raw)
   const kind = it.shape ?? 'rect'
   const fill = it.fill ?? '#ffffff'
   const stroke = it.stroke ?? '#1f2937'
@@ -117,6 +120,15 @@ function Shape ({ it }: { it: Item }) {
         </svg>
       )}
       <EditableText it={it} style={{ fontSize: 18, ...textCss(it) }} />
+    </div>
+  )
+}
+
+function FreeText ({ it: raw }: { it: Item }) {
+  const it = useResolved(raw)
+  return (
+    <div className='textbox' style={textBoxCss(it)}>
+      <EditableText it={it} className='free' style={{ fontSize: 18, ...textCss(it, 'var(--canvas-ink)') }} />
     </div>
   )
 }
@@ -195,7 +207,7 @@ export const ItemView = memo(function ItemView ({ it }: { it: Item }) {
     case 'frame': body = <Frame it={it} />; break
     case 'sticky': body = <Sticky it={it} />; break
     case 'shape': body = <Shape it={it} />; break
-    case 'text': body = <div className='textbox' style={textBoxCss(it)}><EditableText it={it} className='free' style={{ fontSize: 18, ...textCss(it, 'var(--canvas-ink)') }} /></div>; break
+    case 'text': body = <FreeText it={it} />; break
     case 'link': body = <LinkCard it={it} />; break
     case 'video': body = <VideoCard it={it} />; break
     case 'image': body = <img className='image' src={it.src} alt='' draggable={false} />; break
