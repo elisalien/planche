@@ -65,6 +65,18 @@ mais il n'y a pas de comptes ni de droits d'accès.
 
 Rendu DOM + SVG (pas de canvas) pour pouvoir intégrer des iframes vidéo et du texte éditable.
 
+## Sauvegarde permanente en ligne (gratuit, Neon)
+
+Sur un hébergement gratuit dont le disque est effacé (Render Free), branchez une base Postgres
+gratuite : les boards y sont enregistrés et survivent aux mises en veille et redéploiements.
+
+1. Créez un compte sur https://neon.com (gratuit, sans carte) puis un projet.
+2. Copiez la *connection string* (`postgresql://…?sslmode=require`).
+3. Render → service `planche` → **Environment** → ajoutez `DATABASE_URL` = cette chaîne → **Save**.
+4. Après redémarrage, `/api/health` répond `"storage":"postgres"`.
+
+Sans `DATABASE_URL`, le serveur enregistre dans `DATA_DIR` (disque local).
+
 ## Installation automatique (release)
 
 Windows (PowerShell) :

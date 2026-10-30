@@ -17,13 +17,14 @@ import * as awarenessProtocol from 'y-protocols/awareness'
 import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
 import { unfurl } from './unfurl.mjs'
+import { createStore } from './storage.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DEV = process.argv.includes('--dev')
 const PORT = Number(process.env.PORT || 8787)
 const HOST = process.env.HOST || '0.0.0.0'
 const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(ROOT, 'data'))
-fs.mkdirSync(DATA_DIR, { recursive: true })
+const store = await createStore({ databaseUrl: process.env.DATABASE_URL, dataDir: DATA_DIR })
 
 // ---------------------------------------------------------------- Yjs rooms
 
@@ -31,25 +32,27 @@ const MSG_SYNC = 0
 const MSG_AWARENESS = 1
 const ROOM_RE = /^[\w-]{3,64}$/
 const rooms = new Map()
+/** Saves still running for rooms that were just closed; a reopening room waits for them. */
+const pendingSaves = new Map()
 
 class Room {
   constructor (name) {
     this.name = name
-    this.file = path.join(DATA_DIR, `${name}.ybin`)
     this.doc = new Y.Doc({ gc: true })
     this.conns = new Map() // ws -> Set<awareness clientID>
     this.saveTimer = null
-    if (fs.existsSync(this.file)) {
-      try { Y.applyUpdate(this.doc, fs.readFileSync(this.file)) } catch (e) { console.error(`[room ${name}] load failed`, e) }
-    }
+    this.dirty = false
+    this.ready = this.load()
     this.awareness = new awarenessProtocol.Awareness(this.doc)
     this.awareness.setLocalState(null)
 
-    this.doc.on('update', (update) => {
+    this.doc.on('update', (update, origin) => {
+      if (origin === 'load') return
       const enc = encoding.createEncoder()
       encoding.writeVarUint(enc, MSG_SYNC)
       syncProtocol.writeUpdate(enc, update)
       this.broadcast(encoding.toUint8Array(enc))
+      this.dirty = true
       this.scheduleSave()
     })
 
@@ -71,17 +74,32 @@ class Room {
     for (const ws of this.conns.keys()) send(ws, msg)
   }
 
-  scheduleSave () {
-    clearTimeout(this.saveTimer)
-    this.saveTimer = setTimeout(() => this.save(), 1000)
+  async load () {
+    await pendingSaves.get(this.name)
+    try {
+      const state = await store.load(this.name)
+      if (state) Y.applyUpdate(this.doc, new Uint8Array(state), 'load')
+    } catch (e) {
+      console.error(`[room ${this.name}] load failed`, e.message)
+    }
   }
 
+  scheduleSave () {
+    clearTimeout(this.saveTimer)
+    this.saveTimer = setTimeout(() => this.save(), 2000)
+  }
+
+  /** Encodes synchronously, then writes; safe to call right before destroying the doc. */
   save () {
     clearTimeout(this.saveTimer)
     this.saveTimer = null
-    const tmp = `${this.file}.tmp`
-    fs.writeFileSync(tmp, Y.encodeStateAsUpdate(this.doc))
-    fs.renameSync(tmp, this.file)
+    if (!this.dirty) return Promise.resolve()
+    this.dirty = false
+    const state = Buffer.from(Y.encodeStateAsUpdate(this.doc))
+    return store.save(this.name, state).catch((e) => {
+      this.dirty = true
+      console.error(`[room ${this.name}] save failed`, e.message)
+    })
   }
 
   join (ws) {
@@ -125,7 +143,8 @@ class Room {
     this.conns.delete(ws)
     if (ids) awarenessProtocol.removeAwarenessStates(this.awareness, [...ids], null)
     if (this.conns.size === 0) {
-      this.save()
+      const saving = this.save().finally(() => { if (pendingSaves.get(this.name) === saving) pendingSaves.delete(this.name) })
+      pendingSaves.set(this.name, saving)
       this.doc.destroy()
       rooms.delete(this.name)
     }
@@ -166,7 +185,7 @@ async function handleApi (req, res, url) {
   }
   if (url.pathname === '/api/health') {
     res.writeHead(200, { 'content-type': 'application/json' })
-    res.end(JSON.stringify({ ok: true, rooms: rooms.size }))
+    res.end(JSON.stringify({ ok: true, rooms: rooms.size, storage: process.env.DATABASE_URL ? 'postgres' : 'disk' }))
     return true
   }
   return false
@@ -218,7 +237,17 @@ server.on('upgrade', (req, socket, head) => {
   wss.handleUpgrade(req, socket, head, (ws) => {
     ws.isAlive = true
     ws.on('pong', () => { ws.isAlive = true })
-    getRoom(name).join(ws)
+    const room = getRoom(name)
+    // Keep messages that arrive while the board is still loading from storage.
+    const early = []
+    const buffer = (data) => early.push(data)
+    ws.on('message', buffer)
+    room.ready.then(() => {
+      ws.off('message', buffer)
+      if (ws.readyState !== ws.OPEN) return
+      room.join(ws)
+      for (const data of early) room.onMessage(ws, new Uint8Array(data))
+    })
   })
 })
 
@@ -230,13 +259,13 @@ setInterval(() => {
   }
 }, 30000)
 
-function shutdown () {
-  for (const room of rooms.values()) room.save()
+async function shutdown () {
+  await Promise.allSettled([...[...rooms.values()].map((r) => r.save()), ...pendingSaves.values()])
   process.exit(0)
 }
 process.on('SIGINT', shutdown)
 process.on('SIGTERM', shutdown)
 
 server.listen(PORT, HOST, () => {
-  console.log(`Planche ${DEV ? '(dev) ' : ''}-> http://localhost:${PORT}  (données: ${DATA_DIR})`)
+  console.log(`Planche ${DEV ? '(dev) ' : ''}-> http://localhost:${PORT}  (stockage : ${store.describe()})`)
 })

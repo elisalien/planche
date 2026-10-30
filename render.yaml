@@ -6,3 +6,8 @@ services:
     buildCommand: npm ci --include=dev && npm run build
     startCommand: node server/server.mjs
     healthCheckPath: /api/health
+    envVars:
+      # Postgres connection string (e.g. free Neon database) so boards survive restarts.
+      # Set it in the Render dashboard: Environment > DATABASE_URL.
+      - key: DATABASE_URL
+        sync: false
